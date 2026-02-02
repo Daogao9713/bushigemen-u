@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bushigemen University | Global Leader in Theoretical Brotherhood</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Lato', sans-serif; }
+        h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
+        
+        /* 视差背景 */
+        .parallax-hero {
+            background-image: linear-gradient(rgba(0, 21, 41, 0.7), rgba(0, 21, 41, 0.6)), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        /* 磨砂玻璃质感 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* 打印样式 */
+        @media print {
+            body * { visibility: hidden; }
+            #offer-section, #offer-section * { visibility: visible; }
+            #offer-section { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+    <nav class="fixed w-full z-50 transition-all duration-300 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100 py-4">
+        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <div class="flex items-center gap-3 group cursor-pointer">
+                <div class="relative w-12 h-12">
+                    <img src="https://i.postimg.cc/6qXzYyV6/1000025571.png" class="w-full h-full object-contain group-hover:rotate-12 transition-transform duration-500">
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900 leading-none">BUSHIGEMEN</h1>
+                    <p class="text-[10px] uppercase tracking-[0.25em] text-slate-500 mt-1">University</p>
+                </div>
+            </div>
+            <div class="hidden md:flex space-x-8 text-xs font-bold tracking-widest uppercase text-slate-600">
+                <a href="#academics" class="hover:text-orange-600 transition">Academics</a>
+                <a href="#research" class="hover:text-orange-600 transition">Research</a>
+                <a href="#campus" class="hover:text-orange-600 transition">Campus Life</a>
+                <a href="#apply" class="px-5 py-2 bg-slate-900 text-white hover:bg-orange-600 transition duration-300">Apply Now</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="parallax-hero h-screen flex items-center justify-center relative">
+        <div class="text-center text-white px-4" data-aos="fade-up" data-aos-duration="1000">
+            <p class="text-sm md:text-base font-bold tracking-[0.3em] uppercase mb-4 text-orange-400">Est. 2026 • Veritas in Caridibus (真理在虾中)</p>
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 italic leading-tight">
+                Redefining<br>Mediocrity.
+            </h1>
+            <p class="text-lg md:text-xl font-light text-gray-200 max-w-2xl mx-auto mb-10 leading-relaxed">
+                在这里，我们不培养领袖。我们培养那些能够坐在领袖旁边，安静地剥虾并点头称是的人。
+            </p>
+            <a href="#apply" class="inline-block border border-white/30 bg-white/10 backdrop-blur-sm text-white px-8 py-4 uppercase text-xs tracking-[0.2em] hover:bg-white hover:text-slate-900 transition-all duration-300">
+                Start Your Failure
+            </a>
+        </div>
+        
+        <div class="absolute bottom-10 animate-bounce text-white/50">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+    </header>
+
+    <section class="bg-slate-900 text-white py-16 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div data-aos="fade-up" data-aos-delay="0">
+                <div class="text-4xl md:text-5xl font-serif text-orange-500 mb-2">0%</div>
+                <div class="text-xs uppercase tracking-widest text-slate-400">Acceptance Rate<br>(We lost the forms)</div>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="100">
+                <div class="text-4xl md:text-5xl font-serif text-orange-500 mb-2">$0bn</div>
+                <div class="text-xs uppercase tracking-widest text-slate-400">Total Endowment<br>(Spent on Snacks)</div>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="200">
+                <div class="text-4xl md:text-5xl font-serif text-orange-500 mb-2">#1</div>
+                <div class="text-xs uppercase tracking-widest text-slate-400">Ranked in<br>Procrastination</div>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="300">
+                <div class="text-4xl md:text-5xl font-serif text-orange-500 mb-2">∞</div>
+                <div class="text-xs uppercase tracking-widest text-slate-400">Tuition Fees<br>(Soul Payable)</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="academics" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-slate-900 mb-4">World-Class Faculties</h2>
+                <div class="w-20 h-1 bg-orange-500 mx-auto"></div>
+                <p class="mt-4 text-gray-500">Rigorous academic programs designed to test your patience.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-10">
+                <div class="group relative overflow-hidden bg-gray-100 h-96" data-aos="fade-up">
+                    <img src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-full h-full object-cover transition duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent p-8 flex flex-col justify-end">
+                        <h3 class="text-white text-2xl mb-2 italic">School of Business Simulation</h3>
+                        <p class="text-gray-300 text-sm opacity-0 group-hover:opacity-100 transition duration-500 transform translate-y-4 group-hover:translate-y-0">
+                            Learn how to act busy in Excel spreadsheets while actually playing Civilization VI.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="group relative overflow-hidden bg-gray-100 h-96" data-aos="fade-up" data-aos-delay="100">
+                    <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-full h-full object-cover transition duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent p-8 flex flex-col justify-end">
+                        <h3 class="text-white text-2xl mb-2 italic">College of Reverse Engineering</h3>
+                        <p class="text-gray-300 text-sm opacity-0 group-hover:opacity-100 transition duration-500 transform translate-y-4 group-hover:translate-y-0">
+                            Specializing in taking apart perfectly good devices and having "extra screws" left over.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="group relative overflow-hidden bg-gray-100 h-96" data-aos="fade-up" data-aos-delay="200">
+                    <img src="https://images.unsplash.com/photo-1519791883288-dc8bd696e667?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-full h-full object-cover transition duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent p-8 flex flex-col justify-end">
+                        <h3 class="text-white text-2xl mb-2 italic">Institute of Cultural Delusion</h3>
+                        <p class="text-gray-300 text-sm opacity-0 group-hover:opacity-100 transition duration-500 transform translate-y-4 group-hover:translate-y-0">
+                            Exploring the intersection of Type-Moon lore and actual Japanese History.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="apply" class="py-24 bg-slate-50 relative overflow-hidden">
+        <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+        <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+
+        <div class="max-w-4xl mx-auto px-6 relative z-10">
+            <div class="text-center mb-12">
+                <span class="text-orange-600 font-bold tracking-widest text-xs uppercase">Office of Admissions</span>
+                <h2 class="text-4xl font-serif text-slate-900 mt-2">Claim Your Destiny</h2>
+            </div>
+
+            <div class="glass-panel p-10 rounded-2xl shadow-2xl mb-10 transform transition hover:scale-[1.01]">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Full Legal Name</label>
+                        <input type="text" id="studentName" placeholder="e.g. Hanzhi M" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Intended Major</label>
+                        <select id="studentMajor" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition">
+                            <option>Bachelor of Advanced Memeology (网络迷因学)</option>
+                            <option>PhD in Sleep Management (睡眠管理博士)</option>
+                            <option>BSc in Instant Noodle Chemistry (泡面化学)</option>
+                            <option>Master of Gacha Probability (抽卡概率学)</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="generateLetter()" class="w-full mt-8 bg-slate-900 text-white font-bold py-4 rounded-lg hover:bg-orange-600 transition duration-300 shadow-lg flex items-center justify-center gap-2">
+                    <span>GENERATE OFFICIAL DECISION</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </div>
+
+            <div id="offer-section" class="hidden transform transition-all duration-700 bg-white shadow-xl p-0 relative mx-auto max-w-3xl">
+                <div class="h-4 bg-gradient-to-r from-blue-900 via-slate-800 to-orange-500"></div>
+                
+                <div class="p-12 md:p-16 relative">
+                    <div class="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                        <img src="https://i.postimg.cc/6qXzYyV6/1000025571.png" class="w-96 grayscale">
+                    </div>
+
+                    <div class="flex justify-between items-start mb-12 border-b border-gray-100 pb-8">
+                        <div class="flex items-center gap-4">
+                            <img src="https://i.postimg.cc/6qXzYyV6/1000025571.png" class="h-20 w-auto">
+                            <div class="text-left">
+                                <h2 class="text-2xl font-serif font-bold text-slate-900 uppercase tracking-wide">Bushigemen<br>University</h2>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-serif text-4xl text-orange-600 font-bold">2026</p>
+                            <p class="text-[10px] uppercase tracking-widest text-gray-400">Official Admit</p>
+                        </div>
+                    </div>
+
+                    <div class="font-serif text-lg text-slate-800 leading-relaxed space-y-6">
+                        <p>Dear <span id="offerName" class="font-bold border-b-2 border-orange-200">Student</span>,</p>
+                        
+                        <p>It is with a mixture of pride and confusion that I welcome you to the <strong><span id="offerMajor" class="italic">Program</span></strong> at Bushigemen University.</p>
+                        
+                        <p>Out of thousands of applicants who accidentally clicked our website, your profile was the only one that made our Admissions Committee pause and say, <em>"Sure, why not?"</em></p>
+                        
+                        <p>At Bushigemen, we promise to equip you with absolutely no transferable skills, but a lifetime of "Bushi Gemen" memories. Your tuition invoice is attached (it is blank, as we accept payment only in high-fives and shrimp tempura).</p>
+                        
+                        <p>Welcome to the family. Try not to break anything.</p>
+                    </div>
+
+                    <div class="mt-16 flex justify-between items-end">
+                        <div>
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Signature_sample.svg/1200px-Signature_sample.svg.png" class="h-12 opacity-60 mb-2 -ml-4" style="filter: brightness(0);">
+                            <p class="font-bold text-slate-900">GTG</p>
+                            <p class="text-xs uppercase tracking-wider text-gray-500">Dean of Theoretical Affairs</p>
+                        </div>
+                        <div class="w-24 h-24 border-4 border-double border-orange-600 rounded-full flex items-center justify-center text-orange-600 font-bold transform -rotate-12 opacity-80">
+                            SEAL OF<br>APPROVAL
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 border-t border-gray-100 flex justify-between items-center no-print">
+                    <span class="text-xs text-gray-400">Generated securely by Bushigemen AI</span>
+                    <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-2 rounded text-sm hover:bg-slate-700 transition">Print / Save PDF</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-slate-950 text-slate-400 py-16 border-t border-slate-900">
+        <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12 text-sm">
+            <div>
+                <h4 class="text-white font-bold uppercase tracking-widest mb-6">Contact</h4>
+                <p>1234 Void Avenue,</p>
+                <p>Tokyo, Japan 100-0001</p>
+                <p class="mt-4">admissions@bushigemen.edu.fake</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold uppercase tracking-widest mb-6">Schools</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-white transition">Business</a></li>
+                    <li><a href="#" class="hover:text-white transition">Engineering</a></li>
+                    <li><a href="#" class="hover:text-white transition">Arts & Memes</a></li>
+                </ul>
+            </div>
+            <div class="md:col-span-2">
+                <h4 class="text-white font-bold uppercase tracking-widest mb-6">Disclaimer</h4>
+                <p class="leading-relaxed opacity-60 text-xs">
+                    Bushigemen University is a fictitious institution established for the sole purpose of satire and entertainment. Any resemblance to actual educational institutions is purely coincidental, though highly unfortunate for them. Degrees issued here are valid only in the realm of imagination. Do not use for visa applications.
+                </p>
+            </div>
+        </div>
+        <div class="text-center mt-16 pt-8 border-t border-slate-900 text-xs opacity-40">
+            &copy; 2026 Bushigemen University. All Rights Reserved.
+        </div>
+    </footer>
+
+    <script>
+        // 初始化动画库
+        AOS.init({
+            once: true,
+            offset: 50,
+            duration: 800,
+        });
+
+        // 简单的平滑滚动逻辑
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // 生成 Offer 逻辑
+        function generateLetter() {
+            const name = document.getElementById('studentName').value;
+            const major = document.getElementById('studentMajor').value;
+            const offerSection = document.getElementById('offer-section');
+
+            if (!name) {
+                alert("Please identify yourself before we can judge you.");
+                return;
+            }
+
+            // 填充数据
+            document.getElementById('offerName').innerText = name;
+            document.getElementById('offerMajor').innerText = major;
+
+            // 显示区域并滚动
+            offerSection.classList.remove('hidden');
+            
+            // 简单的淡入效果
+            offerSection.style.opacity = 0;
+            setTimeout(() => {
+                offerSection.style.opacity = 1;
+                offerSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    </script>
+</body>
+</html>
