@@ -1,5 +1,7 @@
 // src/App.js
 import React, { useEffect } from 'react';
+// src/App.js 的部分代码更新
+import About from './pages/About'; // 别忘了这行
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -39,21 +41,23 @@ function App() {
             </Link>
             
             {/* 真正的导航链接 */}
-            <div className="hidden md:flex space-x-8 text-xs font-bold tracking-widest uppercase text-slate-600">
-              <Link to="/" className="hover:text-orange-600 transition">Home</Link>
-              <Link to="/faculties" className="hover:text-orange-600 transition">Faculties</Link>
-              <Link to="/apply" className="px-5 py-2 bg-slate-900 text-white hover:bg-orange-600 transition duration-300">Admission</Link>
-            </div>
+            <div className="hidden md:flex space-x-8 ...">
+             <Link to="/" className="...">Home</Link>
+             <Link to="/about" className="hover:text-orange-600 transition">About</Link> {/* 新增 */}
+             <Link to="/faculties" className="...">Faculties</Link>
+             <Link to="/apply" className="...">Admission</Link>
+             </div>
           </div>
         </nav>
 
         {/* 页面路由出口 */}
         <div className="flex-grow pt-20">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/faculties" element={<Faculties />} />
-            <Route path="/apply" element={<Admission />} />
-          </Routes>
+                   <Route path="/" element={<Home />} />
+                   <Route path="/about" element={<About />} /> {/* 新增 */}
+                   <Route path="/faculties" element={<Faculties />} />
+                   <Route path="/apply" element={<Admission />} />
+                  </Routes>
         </div>
 
         {/* 全局页脚 */}
