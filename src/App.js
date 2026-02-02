@@ -1,4 +1,5 @@
 <script src="https://cdn.tailwindcss.com"></script>
+import './App.css';
 import React, { useState, useEffect } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
