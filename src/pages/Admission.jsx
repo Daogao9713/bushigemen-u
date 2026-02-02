@@ -5,7 +5,7 @@ import signatureImg from '../signature.png';
 
 function Admission() {
   const [name, setName] = useState('');
-  const [major, setMajor] = useState('School of Business');
+  const [major] = useState('School of Business');
   const [showOffer, setShowOffer] = useState(false);
   const offerRef = useRef(null); // 用于定位通知书节点
 
