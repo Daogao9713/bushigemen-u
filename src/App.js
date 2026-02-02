@@ -1,16 +1,15 @@
-// src/App.js
 import React, { useEffect } from 'react';
-// src/App.js 的部分代码更新
-import About from './pages/About'; // 别忘了这行
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+
+// 页面引入
 import Home from './pages/Home';
+import About from './pages/About'; // 确保文件名首字母大写
 import Faculties from './pages/Faculties';
 import Admission from './pages/Admission';
-import logo from './logo.jpg'; // 确保路径正确
+import logo from './logo.jpg';
 
-// 一个自动滚动到顶部的组件，防止跳转后停留在页面底部
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -34,34 +33,35 @@ function App() {
           <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
             <Link to="/" className="flex items-center gap-3 group">
               <img src={logo} alt="Logo" className="w-10 h-10 object-contain group-hover:rotate-12 transition-transform duration-500" />
-              <div>
+              <div className="text-left">
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 leading-none">BUSHIGEMEN</h1>
                 <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 mt-1">University</p>
               </div>
             </Link>
             
-            {/* 真正的导航链接 */}
-            <div className="hidden md:flex space-x-8 ...">
-             <Link to="/" className="...">Home</Link>
-             <Link to="/about" className="hover:text-orange-600 transition">About</Link> {/* 新增 */}
-             <Link to="/faculties" className="...">Faculties</Link>
-             <Link to="/apply" className="...">Admission</Link>
-             </div>
+            <div className="hidden md:flex space-x-8 items-center font-medium">
+              <Link to="/" className="hover:text-blue-900 transition">Home</Link>
+              <Link to="/about" className="hover:text-orange-600 transition">About</Link>
+              <Link to="/faculties" className="hover:text-blue-900 transition">Faculties</Link>
+              <Link to="/apply" className="bg-blue-900 text-white px-5 py-2 rounded-full hover:bg-orange-600 transition shadow-md">Apply Now</Link>
+            </div>
           </div>
         </nav>
 
-        {/* 页面路由出口 */}
+        {/* 页面出口 */}
         <div className="flex-grow pt-20">
           <Routes>
-                   <Route path="/" element={<Home />} />
-                   <Route path="/about" element={<About />} /> {/* 新增 */}
-                   <Route path="/faculties" element={<Faculties />} />
-                   <Route path="/apply" element={<Admission />} />
-                  </Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/faculties" element={<Faculties />} />
+            <Route path="/apply" element={<Admission />} />
+            {/* 增加一个 404 处理，防止服务器找不到页面时变空白 */}
+            <Route path="*" element={<Home />} /> 
+          </Routes>
         </div>
 
         {/* 全局页脚 */}
-        <footer className="bg-slate-950 text-slate-400 py-12 border-t border-slate-900 mt-auto">
+        <footer className="bg-slate-950 text-slate-400 py-12 mt-auto">
           <div className="max-w-7xl mx-auto px-6 text-center">
             <div className="mb-4 text-2xl">🦐</div>
             <p className="text-xs tracking-widest uppercase opacity-60">
