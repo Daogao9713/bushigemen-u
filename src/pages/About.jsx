@@ -25,7 +25,7 @@ function About() {
             <div className="w-full aspect-[3/4] bg-gray-200 rounded-lg overflow-hidden shadow-2xl relative border border-gray-100">
               <img 
                 src={founderImg} 
-                alt="Founder SUZUMIYA" 
+                alt="Founder SUZUMIYA GAO " 
                 className="w-full h-full object-cover grayscale hover:grayscale-0 transition duration-700"
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6 text-left">
