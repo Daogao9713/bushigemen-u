@@ -1,5 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import avatar1 from '../assets/images/alumni/suzumiya.jpg'; 
+import avatar2 from '../assets/images/alumni/hanzhi_m.jpg';
+import avatar3 from '../assets/images/alumni/logo.jpg';
+import avatar4 from '../assets/images/alumni/usamiharu.jpg';
 
 function Home() {
   return (
@@ -45,37 +49,81 @@ function Home() {
           <span>★ BREAKING: SUZUMIYA President declares "Shrimp Peeling" a mandatory course</span>
           <span>★ CAMPUS UPDATE: Cafeteria ran out of coffee, riots expected</span>
           <span>★ WEATHER: 100% chance of procrastination today</span>
+          <Link to="/alumni" className="hover:text-orange-400 underline decoration-dotted">★ HALL OF FAME: MEET OUR LEGENDS</Link>
           <span>★ ADMISSIONS: Now accepting applicants for 2026</span>
           <span>★ BREAKING: SUZUMIYA President declares "Shrimp Peeling" a mandatory course</span>
-          <span>★ CAMPUS UPDATE: Cafeteria ran out of coffee, riots expected</span>
         </div>
       </div>
 
       {/* 讽刺数据 */}
-      <section className="bg-white py-20">
+      <section className="bg-white dark:bg-slate-950 py-20 transition-colors">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-12 text-center">
           <div data-aos="fade-up">
             <div className="text-6xl mb-4">😴</div>
-            <h3 className="text-xl font-bold text-slate-900">Advanced Napping</h3>
-            <p className="text-gray-500 mt-2 text-sm">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Advanced Napping</h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
               Our libraries are equipped with 5-star beds.
             </p>
           </div>
 
           <div data-aos="fade-up" data-aos-delay="100">
             <div className="text-6xl mb-4">🎮</div>
-            <h3 className="text-xl font-bold text-slate-900">E-Sports First</h3>
-            <p className="text-gray-500 mt-2 text-sm">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">E-Sports First</h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
               GPA is calculated based on your Steam achievements.
             </p>
           </div>
 
           <div data-aos="fade-up" data-aos-delay="200">
             <div className="text-6xl mb-4">💸</div>
-            <h3 className="text-xl font-bold text-slate-900">Zero ROI</h3>
-            <p className="text-gray-500 mt-2 text-sm">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Zero ROI</h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
               Invest in memories, not in your future career.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* === 新增：知名校友入口板块 === */}
+      <section className="py-24 bg-slate-50 dark:bg-slate-900/30 border-t border-gray-100 dark:border-slate-800 transition-colors">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <div data-aos="fade-up">
+            <h2 className="text-3xl md:text-5xl font-serif italic text-slate-900 dark:text-white mb-6">
+              Distinguished Alumni
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-12 text-lg font-light">
+              Those who shaped the "Bro" culture and pioneered the art of chill.
+            </p>
+            
+            <Link to="/alumni" className="group inline-block">
+              {/* === 修改后的头像堆叠预览 === */}
+<div className="flex justify-center -space-x-4 mb-10 transition-transform group-hover:scale-105 duration-500">
+  {/* 定义一个局部数组，放入你刚才 import 的图片变量 */}
+  {[avatar1, avatar2, avatar3, avatar4].map((imgSrc, index) => (
+    <div 
+      key={index} 
+      className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-white dark:border-slate-800 overflow-hidden shadow-xl bg-gray-200 transition-transform group-hover:rotate-6"
+      style={{ transitionDelay: `${index * 50}ms` }} // 增加一点错落的动画感
+    >
+      <img 
+        src={imgSrc} 
+        alt={`Alumnus ${index + 1}`} 
+        className="w-full h-full object-cover"
+      />
+    </div>
+  ))}
+  
+  {/* 最后的 +99 保持不变 */}
+  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-white dark:border-slate-800 bg-orange-600 text-white flex items-center justify-center text-sm font-bold shadow-xl z-10">
+    +99
+  </div>
+</div>
+
+              {/* 呼吁按钮 */}
+              <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-10 py-4 rounded-full font-bold tracking-widest uppercase text-xs hover:bg-orange-600 dark:hover:bg-orange-600 dark:hover:text-white transition-all shadow-xl">
+                Enter Hall of Fame
+              </div>
+            </Link>
           </div>
         </div>
       </section>
