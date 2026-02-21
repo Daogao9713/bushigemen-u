@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+// App.js
+import React, { useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -10,15 +11,18 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-// === 1. 页面引入 (包括新创建的 PassHub) ===
+// === 页面引入 ===
 import Home from './pages/Home';
+import HomeCNY from './pages/HomeCNY';
 import About from './pages/About';
 import Alumni from './pages/Alumni';
 import Rankings from './pages/Rankings';
 import Faculties from './pages/Faculties';
 import Admission from './pages/Admission';
 import AlumniCard from './pages/AlumniCard';
-import PassHub from './pages/PassHub'; // 新增的收纳页
+import PassHub from './pages/PassHub';
+import NewsDetail from './pages/NewsDetail'; // ✅ 新增引入
+import NewsArchive from './pages/NewsArchive'; // 引入新页面
 
 import logo from './logo.jpg';
 
@@ -27,7 +31,6 @@ function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
-    // 强制刷新动画，防止页面切换空白
     setTimeout(() => {
       AOS.refresh();
     }, 100);
@@ -37,112 +40,213 @@ function ScrollToTop() {
 
 function App() {
   useEffect(() => {
-    // 初始化动画配置
-    AOS.init({
-      once: true,
-      offset: 10,
-      duration: 500,
-      disable: window.innerWidth < 768 ? false : false, // 手机端是否开启动画，自选
-    });
+    AOS.init({ once: true, offset: 10, duration: 500 });
   }, []);
+
+  // 状态管理：主题菜单与主导航菜单
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+
+  const closeAllMenus = () => {
+    setIsNavMenuOpen(false);
+    setIsThemeMenuOpen(false);
+  };
 
   return (
     <Router>
       <ScrollToTop />
 
-      {/* 外层容器：防止左右晃动 + 深色模式背景 */}
       <div className="bg-gray-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden">
-        {/* === 顶部导航栏 (电脑端全功能，手机端精简) === */}
-        <nav className="fixed w-full z-50 top-0 py-3 bg-white/95 text-slate-800 border-b border-gray-100 backdrop-blur-md shadow-sm transition-colors duration-500 dark:bg-slate-900/95 dark:text-slate-100 dark:border-slate-800">
-          <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-            {/* Logo 区 */}
-            <Link to="/" className="flex items-center gap-2 group shrink-0">
-              <img
-                src={logo}
-                alt="Logo"
-                className="w-8 h-8 md:w-10 md:h-10 object-contain"
-              />
-              <div className="text-left">
-                <h1 className="text-sm md:text-xl font-bold tracking-tighter leading-none">
-                  BUSHIGEMEN
-                </h1>
-                <p className="text-[8px] md:text-[10px] uppercase tracking-widest mt-0.5 opacity-60">
-                  University
-                </p>
-              </div>
-            </Link>
-
-            {/* 电脑端菜单 (PC屏幕大，直接展示所有核心入口) */}
-            <div className="hidden md:flex items-center space-x-4 lg:space-x-7 font-semibold text-sm">
-              <Link to="/" className="hover:text-blue-600 transition">
-                Home
-              </Link>
-              <Link to="/about" className="hover:text-orange-600 transition">
-                About
-              </Link>
-              <Link to="/alumni" className="hover:text-blue-600 transition">
-                Alumni
-              </Link>
-              <Link to="/rankings" className="hover:text-orange-600 transition">
-                Rankings
-              </Link>
-              <Link to="/faculties" className="hover:text-blue-600 transition">
-                Faculties
-              </Link>
-
-              {/* 新增：电脑端直接领证入口 */}
-              <Link
-                to="/id-card"
-                className="hover:text-orange-600 transition flex items-center gap-1"
+        {/* === 重新设计的极简导航栏 === */}
+        <nav className="fixed w-full z-50 top-0 h-16 bg-white/95 text-slate-800 border-b border-gray-100 backdrop-blur-md shadow-sm transition-colors duration-500 dark:bg-slate-900/95 dark:text-slate-100 dark:border-slate-800">
+          <div className="max-w-7xl mx-auto px-4 h-full flex justify-between items-center">
+            {/* 左侧：Style 主题切换 */}
+            <div className="flex-1 flex justify-start relative">
+              <button
+                onClick={() => {
+                  setIsThemeMenuOpen((v) => !v);
+                  setIsNavMenuOpen(false);
+                }}
+                className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
-                <span className="text-base"></span> ID Portal
-              </Link>
+                <span>✨</span>
+                <span className="hidden md:inline">Style</span>
+              </button>
 
-              {/* 录取申请按钮 */}
-              <Link
-                to="/apply"
-                className="bg-blue-900 text-white px-5 py-2 rounded-full hover:bg-orange-600 transition shadow-md whitespace-nowrap"
-              >
-                Apply Now
-              </Link>
+              {isThemeMenuOpen && (
+                <div className="absolute top-10 left-0 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-50">
+                  <div className="p-2">
+                    <Link
+                      onClick={() => setIsThemeMenuOpen(false)}
+                      to="/"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                    >
+                      🏛️ <span>Main Campus</span>
+                    </Link>
+
+                    <Link
+                      onClick={() => setIsThemeMenuOpen(false)}
+                      to="/cny"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition mt-1"
+                    >
+                      🧧 <span>Lunar New Year</span>
+                    </Link>
+
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 cursor-not-allowed mt-1 opacity-50">
+                      🎄 <span>Xmas '26 (Soon)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* 手机端占位符 */}
-            <div className="md:hidden w-8"></div>
+            {/* 中间：Logo */}
+            <Link
+              to="/"
+              className="flex-shrink-0 flex flex-col items-center justify-center group select-none"
+              onClick={closeAllMenus}
+            >
+              <div className="flex items-center gap-2">
+                <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
+                <h1 className="text-lg font-black tracking-tighter leading-none">
+                  BGU
+                </h1>
+              </div>
+              <p className="text-[6px] uppercase tracking-[0.3em] mt-0.5 opacity-60 font-bold">
+                Bushigemen
+              </p>
+            </Link>
+
+            {/* 右侧：汉堡菜单 */}
+            <div className="flex-1 flex justify-end relative">
+              <button
+                onClick={() => {
+                  setIsNavMenuOpen((v) => !v);
+                  setIsThemeMenuOpen(false);
+                }}
+                className="p-2 -mr-2 text-slate-600 dark:text-slate-300 hover:text-orange-600 transition"
+                aria-label="Open menu"
+                aria-expanded={isNavMenuOpen}
+              >
+                {isNavMenuOpen ? (
+                  <span className="text-2xl leading-none">×</span>
+                ) : (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                )}
+              </button>
+
+              {/* 抽屉式菜单（下拉面板） */}
+              {isNavMenuOpen && (
+                <div className="absolute top-12 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 p-3 z-50">
+                  <div className="flex flex-col gap-1">
+                    <NavMenuItem
+                      to="/"
+                      icon="🏠"
+                      label="Home"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+                    <NavMenuItem
+                      to="/about"
+                      icon="📖"
+                      label="About Us"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+                    <NavMenuItem
+                      to="/alumni"
+                      icon="🤝"
+                      label="Alumni Wall"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+                    <NavMenuItem
+                      to="/rankings"
+                      icon="🏆"
+                      label="Rankings"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+                    <NavMenuItem
+                      to="/faculties"
+                      icon="🎓"
+                      label="Faculties"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+
+                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+
+                    <NavMenuItem
+                      to="/pass"
+                      icon="🗂️"
+                      label="Student Portal"
+                      onClick={() => setIsNavMenuOpen(false)}
+                      highlight
+                    />
+
+                    <NavMenuItem
+                      to="/apply"
+                      icon="📝"
+                      label="Apply Now"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+
+                    <NavMenuItem
+                      to="/id-card"
+                      icon="🪪"
+                      label="ID Portal"
+                      onClick={() => setIsNavMenuOpen(false)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </nav>
 
-        {/* === 页面内容渲染区 === */}
-        <div className="flex-grow pt-16 pb-24 md:pb-0">
+        {/* === 页面内容渲染区（点击空白处关闭菜单） === */}
+        <div className="flex-grow pt-16 pb-24 md:pb-0" onClick={closeAllMenus}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/cny" element={<HomeCNY />} />
+
             <Route path="/about" element={<About />} />
             <Route path="/alumni" element={<Alumni />} />
             <Route path="/rankings" element={<Rankings />} />
             <Route path="/faculties" element={<Faculties />} />
 
-            {/* 核心业务路由 */}
-            <Route path="/pass" element={<PassHub />} /> {/* 收纳页路由 */}
+            <Route path="/pass" element={<PassHub />} />
             <Route path="/apply" element={<Admission />} />
             <Route path="/id-card" element={<AlumniCard />} />
+
+            {/* ✅ 📰 注册动态新闻路由 */}
+            <Route path="/news/:id" element={<NewsDetail />} />
+                    
+                     <Route path="/news" element={<NewsArchive />} />  {/* 汇总页 */}
+                     <Route path="/news/:id" element={<NewsDetail />} /> {/* 详情页 */}
 
             <Route path="*" element={<Home />} />
           </Routes>
         </div>
 
-        {/* === 手机端底部导航栏 (核心修改区) === */}
+        {/* === 手机端底部导航栏（保持不变） === */}
         <div className="md:hidden fixed bottom-0 w-full bg-white/95 dark:bg-slate-900/95 border-t border-gray-200 dark:border-slate-800 backdrop-blur-lg z-50 flex justify-around items-center py-2 pb-safe-area">
           <BottomNavLink to="/" icon="🏠" label="Home" />
           <BottomNavLink to="/about" icon="📖" label="About" />
-
-          {/* 中间核心按钮：现在指向 PASS 收纳页 */}
           <BottomNavLink to="/pass" icon="🗂️" label="Portal" isMain />
-
           <BottomNavLink to="/alumni" icon="🤝" label="Alumni" />
           <BottomNavLink to="/faculties" icon="🎓" label="Faculties" />
         </div>
 
-        {/* 全局页脚 (电脑端显示) */}
+        {/* 页脚（电脑端显示） */}
         <footer className="bg-slate-950 text-slate-400 py-10 mt-auto hidden md:block">
           <div className="max-w-7xl mx-auto px-6 text-center text-xs">
             <p className="tracking-widest uppercase opacity-60">
@@ -155,15 +259,34 @@ function App() {
   );
 }
 
+// 抽屉菜单项组件
+function NavMenuItem({ to, icon, label, onClick, highlight }) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${
+        highlight
+          ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600'
+          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+      }`}
+    >
+      <span className="text-lg">{icon}</span>
+      <span>{label}</span>
+    </Link>
+  );
+}
+
 // 底部导航单项组件
 function BottomNavLink({ to, icon, label, isMain }) {
   const location = useLocation();
-  // 注意：如果当前路径是 /pass, /apply 或 /id-card，都应该高亮主按钮
+
   const isPassActive =
     to === '/pass' &&
     (location.pathname === '/pass' ||
       location.pathname === '/apply' ||
       location.pathname === '/id-card');
+
   const isActive = location.pathname === to || isPassActive;
 
   if (isMain) {
