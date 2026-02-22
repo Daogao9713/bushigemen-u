@@ -1,4 +1,4 @@
-// App.js
+// src/App.js
 import React, { useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
@@ -21,8 +21,9 @@ import Faculties from './pages/Faculties';
 import Admission from './pages/Admission';
 import AlumniCard from './pages/AlumniCard';
 import PassHub from './pages/PassHub';
-import NewsDetail from './pages/NewsDetail'; // ✅ 新增引入
-import NewsArchive from './pages/NewsArchive'; // 引入新页面
+import NewsDetail from './pages/NewsDetail';
+import NewsArchive from './pages/NewsArchive';
+import Admin from './pages/Admin'; // ✅ 加上它（文件名建议 Admin.jsx）
 
 import logo from './logo.jpg';
 
@@ -43,7 +44,6 @@ function App() {
     AOS.init({ once: true, offset: 10, duration: 500 });
   }, []);
 
-  // 状态管理：主题菜单与主导航菜单
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
 
@@ -57,10 +57,8 @@ function App() {
       <ScrollToTop />
 
       <div className="bg-gray-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden">
-        {/* === 重新设计的极简导航栏 === */}
         <nav className="fixed w-full z-50 top-0 h-16 bg-white/95 text-slate-800 border-b border-gray-100 backdrop-blur-md shadow-sm transition-colors duration-500 dark:bg-slate-900/95 dark:text-slate-100 dark:border-slate-800">
           <div className="max-w-7xl mx-auto px-4 h-full flex justify-between items-center">
-            {/* 左侧：Style 主题切换 */}
             <div className="flex-1 flex justify-start relative">
               <button
                 onClick={() => {
@@ -100,7 +98,6 @@ function App() {
               )}
             </div>
 
-            {/* 中间：Logo */}
             <Link
               to="/"
               className="flex-shrink-0 flex flex-col items-center justify-center group select-none"
@@ -117,7 +114,6 @@ function App() {
               </p>
             </Link>
 
-            {/* 右侧：汉堡菜单 */}
             <div className="flex-1 flex justify-end relative">
               <button
                 onClick={() => {
@@ -147,7 +143,6 @@ function App() {
                 )}
               </button>
 
-              {/* 抽屉式菜单（下拉面板） */}
               {isNavMenuOpen && (
                 <div className="absolute top-12 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 p-3 z-50">
                   <div className="flex flex-col gap-1">
@@ -212,7 +207,6 @@ function App() {
           </div>
         </nav>
 
-        {/* === 页面内容渲染区（点击空白处关闭菜单） === */}
         <div className="flex-grow pt-16 pb-24 md:pb-0" onClick={closeAllMenus}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -227,17 +221,16 @@ function App() {
             <Route path="/apply" element={<Admission />} />
             <Route path="/id-card" element={<AlumniCard />} />
 
-            {/* ✅ 📰 注册动态新闻路由 */}
+            <Route path="/news" element={<NewsArchive />} />
             <Route path="/news/:id" element={<NewsDetail />} />
-                    
-                     <Route path="/news" element={<NewsArchive />} />  {/* 汇总页 */}
-                     <Route path="/news/:id" element={<NewsDetail />} /> {/* 详情页 */}
+
+            {/* ✅ 后台发布页 */}
+            <Route path="/admin" element={<Admin />} />
 
             <Route path="*" element={<Home />} />
           </Routes>
         </div>
 
-        {/* === 手机端底部导航栏（保持不变） === */}
         <div className="md:hidden fixed bottom-0 w-full bg-white/95 dark:bg-slate-900/95 border-t border-gray-200 dark:border-slate-800 backdrop-blur-lg z-50 flex justify-around items-center py-2 pb-safe-area">
           <BottomNavLink to="/" icon="🏠" label="Home" />
           <BottomNavLink to="/about" icon="📖" label="About" />
@@ -246,7 +239,6 @@ function App() {
           <BottomNavLink to="/faculties" icon="🎓" label="Faculties" />
         </div>
 
-        {/* 页脚（电脑端显示） */}
         <footer className="bg-slate-950 text-slate-400 py-10 mt-auto hidden md:block">
           <div className="max-w-7xl mx-auto px-6 text-center text-xs">
             <p className="tracking-widest uppercase opacity-60">
@@ -259,7 +251,6 @@ function App() {
   );
 }
 
-// 抽屉菜单项组件
 function NavMenuItem({ to, icon, label, onClick, highlight }) {
   return (
     <Link
@@ -277,7 +268,6 @@ function NavMenuItem({ to, icon, label, onClick, highlight }) {
   );
 }
 
-// 底部导航单项组件
 function BottomNavLink({ to, icon, label, isMain }) {
   const location = useLocation();
 
