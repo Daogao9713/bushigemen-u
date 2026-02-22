@@ -28,7 +28,7 @@ function Admin() {
           onChange={(e) => setPwd(e.target.value)}
         />
         <button
-          onClick={() => pwd === '哥们儿' && setAuth(true)}
+          onClick={() => pwd === 'welcome996' && setAuth(true)}
           className="ml-2 bg-orange-600 p-2 text-white"
         >
           进入
