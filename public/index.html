@@ -1,39 +1,58 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
+<head>
+  <meta charset="utf-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
-    <meta name="google-site-verification" content="oK6uHC4l4znXEKFZfB2n-eZmPhtCnUQlPnk1tZCAD7Q" />
+  <meta name="google-site-verification"
+        content="oK6uHC4l4znXEKFZfB2n-eZmPhtCnUQlPnk1tZCAD7Q" />
 
-    <title>布斯戈门大学 | Bushigemen University - 哥们义气的最高学府</title>
+  <title>布斯戈门大学 | Bushigemen University - 哥们义气的最高学府</title>
 
-    <meta
-      name="description"
-      content="布斯戈门大学（Bushigemen University）由 SUZUMIYA 创立。本校下设剥虾工程系、梗研院及拖延心理学系，致力于为全球哥们提供学术级的情谊认证。2026年正式开启全球招生。"
-    />
+  <meta
+    name="description"
+    content="布斯戈门大学（Bushigemen University）由 SUZUMIYA 创立。本校下设剥虾工程系、梗研院及拖延心理学系，致力于为全球哥们提供学术级的情谊认证。2026年正式开启全球招生。"
+  />
 
-    <meta property="og:title" content="布斯戈门大学 - Official Admission Portal" />
-    <meta property="og:description" content="在这里，'哥们'不只是一个称呼，更是一项课题。即刻领取你的录取通知书。" />
-    <meta property="og:image" content="%PUBLIC_URL%/logo.jpg" />
-    <meta property="og:type" content="website" />
+  <!-- Open Graph -->
+  <meta property="og:title"
+        content="布斯戈门大学 - Official Admission Portal" />
+  <meta property="og:description"
+        content="在这里，'哥们'不只是一个称呼，更是一项课题。即刻领取你的录取通知书。" />
+  <meta property="og:image"
+        content="%PUBLIC_URL%/logo.jpg" />
+  <meta property="og:type"
+        content="website" />
 
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  <!-- 图标 -->
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo.jpg" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
+  <!-- PWA -->
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  <meta name="theme-color" content="#ea580c" />
 
-  <body class="bg-gray-50">
-    <noscript>我们需要 JavaScript 来运行这所大学。如果没有它，这只是一张废纸。</noscript>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
 
-    <div id="root"></div>
+<body class="antialiased bg-gray-50">
 
-    <div style="display: none">
-      <h1>不止哥们大学</h1>
-      <p>创始人：SUZUMIYA</p>
-      <p>主要学科：剥虾技术、机械工程应用（哥们版）。</p>
-    </div>
-  </body>
+  <noscript>
+    我们需要 JavaScript 来运行这所大学。如果没有它，这只是一张废纸。
+  </noscript>
+
+  <div id="root"></div>
+
+  <!-- SEO 隐藏文本 -->
+  <div style="display: none;">
+    <h1>布斯戈门大学 Bushigemen University</h1>
+    <p>创始人：SUZUMIYA</p>
+    <p>主要学科：剥虾技术、机械工程应用（哥们版）、拖延心理学。</p>
+    <p>2026年全球招生启动。</p>
+  </div>
+
+</body>
 </html>
