@@ -5,27 +5,48 @@ const BroadcastBanner = () => {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    // 1. 初始获取状态
+    let channel;
+
     const init = async () => {
-      const { data: initialData } = await supabase
+      // 1) 初始获取
+      const { data: initialData, error } = await supabase
         .from('broadcast')
         .select('*')
         .eq('id', 1)
         .single();
+
+      if (error) {
+        console.error('[BroadcastBanner] init error:', error);
+        return;
+      }
       setData(initialData);
+
+      // 2) Realtime 订阅
+      channel = supabase
+        .channel('broadcast-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'broadcast',
+            filter: 'id=eq.1', // ✅ 强烈建议加
+          },
+          (payload) => {
+            console.log('[BroadcastBanner] realtime payload:', payload);
+            setData(payload.new);
+          }
+        )
+        .subscribe((status) => {
+          console.log('[BroadcastBanner] channel status:', status);
+        });
     };
+
     init();
 
-    // 2. 📡 开启 Realtime 实时监听 (重点！不需要刷新就能闪烁)
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'broadcast' }, 
-        payload => setData(payload.new)
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   if (!data?.is_active) return null;
@@ -37,13 +58,16 @@ const BroadcastBanner = () => {
         <div className="bg-red-600 text-black font-black px-6 h-full flex items-center italic text-xs animate-pulse">
           EMERGENCY
         </div>
-        
+
         {/* 中间滚动文字 */}
         <div className="flex-1 overflow-hidden relative">
           <div className="flex animate-marquee-fast whitespace-nowrap py-1">
             {[...Array(5)].map((_, i) => (
-              <span key={i} className="text-red-600 font-black text-sm tracking-tighter mx-10 uppercase italic">
-                {data.message} • PATTERN BLUE CONFIRMED • {data.message} • 
+              <span
+                key={i}
+                className="text-red-600 font-black text-sm tracking-tighter mx-10 uppercase italic"
+              >
+                {data.message} • PATTERN BLUE CONFIRMED • {data.message} •
               </span>
             ))}
           </div>
@@ -54,6 +78,7 @@ const BroadcastBanner = () => {
           TOP SECRET
         </div>
       </div>
+
       {/* EVA 风格的细横线装饰 */}
       <div className="h-[2px] bg-red-600 opacity-50 animate-bounce"></div>
     </div>
