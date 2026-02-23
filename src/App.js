@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import AOS from 'aos';
@@ -180,20 +181,23 @@ function App() {
             <Route path="/news/:id" element={<NewsDetail />} />
             <Route path="/admin" element={<Admin />} />
 
-            {/* ✅ 新增：3D 校园 */}
+            {/* ✅ 3D 校园 */}
             <Route path="/campus" element={<CampusView />} />
 
             <Route path="*" element={<Home />} />
           </Routes>
         </main>
 
-        {/* 移动端底部导航 */}
-        <div className="md:hidden fixed bottom-0 w-full bg-white/95 dark:bg-slate-900/95 border-t border-gray-200 dark:border-slate-800 backdrop-blur-lg z-50 flex justify-around items-center py-2 pb-safe-area">
+        {/* 📱 手机端底部导航（赛博风 + 深色更有质感 + safe-area + 不挡 Campus 视线） */}
+        <div className="md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 border-t border-gray-200 dark:border-emerald-500/20 backdrop-blur-2xl z-[100] flex justify-around items-center py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_30px_rgba(0,0,0,0.3)]">
           <BottomNavLink to="/" icon="🏠" label="Home" />
           <BottomNavLink to="/about" icon="📖" label="About" />
+
+          {/* Portal 主按钮：在 /campus 页面自动缩小+降低抬升，避免遮挡 */}
           <BottomNavLink to="/pass" icon="🗂️" label="Portal" isMain />
+
           <BottomNavLink to="/alumni" icon="🤝" label="Alumni" />
-          <BottomNavLink to="/faculties" icon="🎓" label="Faculties" />
+          <BottomNavLink to="/campus" icon="🗺️" label="Campus" />
         </div>
 
         {/* 页脚 */}
@@ -227,21 +231,30 @@ function NavMenuItem({ to, icon, label, onClick, highlight }) {
 
 function BottomNavLink({ to, icon, label, isMain }) {
   const location = useLocation();
+
   const isActive =
     location.pathname === to || (to === '/pass' && ['/pass', '/apply', '/id-card'].includes(location.pathname));
 
-  if (isMain)
+  // ✅ Campus 页面降低遮挡：主按钮缩小、抬升变小
+  const isCampus = location.pathname === '/campus';
+  const mainSize = isCampus ? 'w-12 h-12 text-xl' : 'w-14 h-14 text-2xl';
+  const mainLift = isCampus ? '-top-3' : '-top-5';
+
+  if (isMain) {
     return (
-      <Link to={to} className="relative -top-5">
+      <Link to={to} className={`relative ${mainLift}`}>
         <div
-          className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90 ${
-            isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white'
-          }`}
+          className={[
+            mainSize,
+            'rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90',
+            isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white',
+          ].join(' ')}
         >
           {icon}
         </div>
       </Link>
     );
+  }
 
   return (
     <Link to={to} className={`flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600' : 'text-slate-400'}`}>
