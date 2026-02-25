@@ -79,7 +79,7 @@ const Preloader = ({ onLoaded, onNameSubmitted }) => {
               <input
                 type="text"
                 className={`w-full bg-transparent border-none ${theme.text} p-3 text-center focus:ring-0 placeholder-${theme.accent}-900/50 uppercase text-xs md:text-sm font-bold`}
-                placeholder="INPUT ACCESS KEY"
+                placeholder="YOUR NAME"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 autoFocus
