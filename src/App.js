@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -73,8 +74,24 @@ function ScrollToTop() {
 }
 
 function App() {
-  const [showPreloader, setShowPreloader] = useState(true);
-  const [loggedInUserName, setLoggedInUserName] = useState('');
+  // ✅ 刷新不再“跳登录”：初始化时读取 localStorage
+  const [showPreloader, setShowPreloader] = useState(() => {
+    try {
+      return !localStorage.getItem('bgu_user_name');
+    } catch {
+      // localStorage 不可用时，退化为显示 Preloader
+      return true;
+    }
+  });
+
+  const [loggedInUserName, setLoggedInUserName] = useState(() => {
+    try {
+      return localStorage.getItem('bgu_user_name') || '';
+    } catch {
+      return '';
+    }
+  });
+
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
@@ -96,27 +113,43 @@ function App() {
 
   const BANNER_H = 32;
   const NAV_H = 64;
-  const topPadding = useMemo(() => (isBroadcastActive ? BANNER_H : 0) + NAV_H, [isBroadcastActive]);
+  const topPadding = useMemo(
+    () => (isBroadcastActive ? BANNER_H : 0) + NAV_H,
+    [isBroadcastActive]
+  );
 
   const closeAllMenus = () => {
     setIsNavMenuOpen(false);
     setIsThemeMenuOpen(false);
   };
 
+  // ✅ 提交名字时同时写入本地存储
+  const handleNameSubmitted = (name) => {
+    setLoggedInUserName(name);
+    try {
+      localStorage.setItem('bgu_user_name', name);
+    } catch {
+      // 忽略写入失败（无痕/权限等）
+    }
+  };
+
   if (showPreloader) {
-    return <Preloader onLoaded={() => setShowPreloader(false)} onNameSubmitted={setLoggedInUserName} />;
+    return (
+      <Preloader
+        onLoaded={() => setShowPreloader(false)}
+        onNameSubmitted={handleNameSubmitted}
+      />
+    );
   }
 
   return (
     <Router>
       <ScrollToTop />
       <div className="bg-gray-50 dark:bg-slate-950 min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden">
-        
         <header className="fixed top-0 w-full z-[100] flex flex-col transition-all duration-500">
           <BroadcastBanner onActiveChange={setIsBroadcastActive} />
           <nav className="h-16 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 flex items-center">
             <div className="max-w-7xl mx-auto px-4 w-full flex justify-between items-center">
-              
               {/* Style 按钮修复 */}
               <div className="flex-1 flex justify-start relative">
                 <button
@@ -132,25 +165,45 @@ function App() {
                 {isThemeMenuOpen && (
                   <div className="absolute top-12 left-0 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-[110]">
                     <div className="p-2 text-left space-y-1">
-                      <Link onClick={closeAllMenus} to="/" className="block px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🏛️ Main Campus</Link>
-                      <Link onClick={closeAllMenus} to="/cny" className="block px-3 py-2 text-sm text-red-600 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">🧧 Lunar New Year</Link>
+                      <Link
+                        onClick={closeAllMenus}
+                        to="/"
+                        className="block px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                      >
+                        🏛️ Main Campus
+                      </Link>
+                      <Link
+                        onClick={closeAllMenus}
+                        to="/cny"
+                        className="block px-3 py-2 text-sm text-red-600 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      >
+                        🧧 Lunar New Year
+                      </Link>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Logo */}
-              <Link to="/" className="flex-shrink-0 flex flex-col items-center group select-none" onClick={closeAllMenus}>
+              <Link
+                to="/"
+                className="flex-shrink-0 flex flex-col items-center group select-none"
+                onClick={closeAllMenus}
+              >
                 <div className="flex items-center gap-2">
                   <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
-                  <h1 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">BGU</h1>
+                  <h1 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
+                    BGU
+                  </h1>
                 </div>
-                <p className="text-[6px] uppercase tracking-[0.3em] opacity-60 font-bold dark:text-slate-400">Bushigemen</p>
+                <p className="text-[6px] uppercase tracking-[0.3em] opacity-60 font-bold dark:text-slate-400">
+                  Bushigemen
+                </p>
               </Link>
 
               {/* 菜单按钮修复 */}
               <div className="flex-1 flex justify-end relative">
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsNavMenuOpen(!isNavMenuOpen);
@@ -158,8 +211,25 @@ function App() {
                   }}
                   className="p-2 text-slate-600 dark:text-slate-300 hover:text-orange-600 transition"
                 >
-                  {isNavMenuOpen ? <span className="text-2xl">×</span> : <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg>}
+                  {isNavMenuOpen ? (
+                    <span className="text-2xl">×</span>
+                  ) : (
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
+                    </svg>
+                  )}
                 </button>
+
                 {isNavMenuOpen && (
                   <div className="absolute top-12 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 p-3 z-[110]">
                     <div className="flex flex-col gap-1">
@@ -167,7 +237,13 @@ function App() {
                       <NavMenuItem to="/about" icon="📖" label="About Us" onClick={closeAllMenus} />
                       <NavMenuItem to="/alumni" icon="🤝" label="Alumni Wall" onClick={closeAllMenus} />
                       <NavMenuItem to="/campus" icon="🧊" label="3D Campus" onClick={closeAllMenus} />
-                      <NavMenuItem to="/pass" icon="🗂️" label="Student Portal" onClick={closeAllMenus} highlight />
+                      <NavMenuItem
+                        to="/pass"
+                        icon="🗂️"
+                        label="Student Portal"
+                        onClick={closeAllMenus}
+                        highlight
+                      />
                     </div>
                   </div>
                 )}
@@ -177,8 +253,8 @@ function App() {
         </header>
 
         {/* 主内容点击会自动收起菜单 */}
-        <main 
-          className="flex-grow overflow-x-hidden relative" 
+        <main
+          className="flex-grow overflow-x-hidden relative"
           style={{ paddingTop: topPadding }}
           onClick={closeAllMenus}
         >
@@ -201,22 +277,50 @@ function App() {
 // 辅助组件 (修正了状态关闭逻辑)
 function NavMenuItem({ to, icon, label, onClick, highlight }) {
   return (
-    <Link to={to} onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${highlight ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-      <span className="text-lg">{icon}</span><span>{label}</span>
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${
+        highlight
+          ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600'
+          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+      }`}
+    >
+      <span className="text-lg">{icon}</span>
+      <span>{label}</span>
     </Link>
   );
 }
 
 function BottomNavLink({ to, icon, label, isMain }) {
   const location = useLocation();
-  const isActive = location.pathname === to || (to === '/pass' && ['/pass', '/apply', '/id-card'].includes(location.pathname));
+  const isActive =
+    location.pathname === to ||
+    (to === '/pass' && ['/pass', '/apply', '/id-card'].includes(location.pathname));
   const isCampus = location.pathname === '/campus';
+
   return (
-    <Link to={to} className={isMain ? "relative -top-5" : `flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600' : 'text-slate-400'}`}>
+    <Link
+      to={to}
+      className={
+        isMain
+          ? 'relative -top-5'
+          : `flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600' : 'text-slate-400'}`
+      }
+    >
       {isMain ? (
-        <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90 ${isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white'}`}>{icon}</div>
+        <div
+          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90 ${
+            isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white'
+          }`}
+        >
+          {icon}
+        </div>
       ) : (
-        <><span className="text-xl">{icon}</span><span className="text-[10px] font-medium">{label}</span></>
+        <>
+          <span className="text-xl">{icon}</span>
+          <span className="text-[10px] font-medium">{label}</span>
+        </>
       )}
     </Link>
   );

@@ -34,7 +34,8 @@ const TerminalChat = ({ theme, userName }) => {
     const channel = supabase.channel('bgu_public_chat')
       .on('postgres_changes', { event: 'INSERT', table: 'messages' }, (payload) => {
         setMsgs((current) => {
-          if (current.find(m => m.id === payload.new.id)) return current;
+          // 避免重复消息（防止乐观更新和订阅重复）
+          if (current.find(m => m.id === payload.new.id || m.id === payload.new.id)) return current;
           return [...current, payload.new].slice(-15);
         });
         triggerHaptic('click'); // 新消息进来，震一下
@@ -52,19 +53,35 @@ const TerminalChat = ({ theme, userName }) => {
     e.preventDefault();
     if (!input.trim() || input.length > 30) return;
 
+    // 创建乐观更新的消息对象
+    const newMessage = {
+      id: Date.now(), // 临时 ID
+      user_name: userName || 'Bro',
+      content: input,
+      theme_color: theme.text,
+      created_at: new Date().toISOString()
+    };
+
     const tempInput = input;
     setInput('');
-    triggerHaptic('success'); // 发送动作，震一下
+    triggerHaptic('success');
 
+    // 🚨 关键：先在本地把消息显示出来，不等数据库
+    setMsgs(prev => [...prev, newMessage].slice(-15));
+
+    // 尝试发送到数据库
     const { error } = await supabase.from('messages').insert([{ 
-      user_name: userName || 'Bro', 
-      content: tempInput,
-      theme_color: theme.text 
+      user_name: newMessage.user_name, 
+      content: newMessage.content,
+      theme_color: newMessage.theme_color 
     }]);
 
     if (error) {
-      triggerHaptic('error'); // 失败了，长震提醒
+      // 如果真发失败了，再把那条消息撤回来并提醒用户
+      setMsgs(prev => prev.filter(m => m.id !== newMessage.id));
+      triggerHaptic('error');
       setInput(tempInput);
+      alert("📡 LINK_LOST: MESSAGE_NOT_SENT");
     }
   };
 
@@ -87,11 +104,22 @@ const TerminalChat = ({ theme, userName }) => {
           onChange={e => setInput(e.target.value)}
           placeholder="COMMUNICATE..."
           className="flex-grow bg-white/5 border border-white/10 px-2 py-1 text-[10px] text-white focus:outline-none focus:border-emerald-500"
+          maxLength={30}
         />
-        <button className={`px-2 py-1 bg-white/10 border border-white/20 text-[9px] text-white active:bg-emerald-600`}>
+        <button 
+          type="submit"
+          className={`px-2 py-1 bg-white/10 border border-white/20 text-[9px] text-white active:bg-emerald-600 transition-colors`}
+        >
           EXEC
         </button>
       </form>
+      
+      {/* 显示字符限制提示 */}
+      {input.length > 0 && (
+        <div className="text-[6px] text-white/30 text-right mt-1">
+          {input.length}/30
+        </div>
+      )}
     </div>
   );
 };
