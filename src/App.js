@@ -4,6 +4,9 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
+// ✅ 引入 Preloader
+import Preloader from './components/Preloader';
+
 // ✅ 引入 BroadcastBanner
 import BroadcastBanner from './components/BroadcastBanner';
 
@@ -49,6 +52,10 @@ function App() {
   // ✅ 初始状态设为 false，由 Banner 内部获取数据库后回传
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
 
+  // ✅ Preloader 控制状态
+  const [showPreloader, setShowPreloader] = useState(true);
+  const [loggedInUserName, setLoggedInUserName] = useState('');
+
   // ✅ 高度常量定义
   const BANNER_H = 32; // 对应 h-8
   const NAV_H = 64; // 对应 h-16
@@ -63,6 +70,17 @@ function App() {
     setIsThemeMenuOpen(false);
   };
 
+  // ✅✅ 核心改动：Preloader 没结束前，直接 return，只渲染 Preloader（其余全部 Unmount / 不挂载）
+  if (showPreloader) {
+    return (
+      <Preloader
+        onLoaded={() => setShowPreloader(false)}
+        onNameSubmitted={(name) => setLoggedInUserName(name)}
+      />
+    );
+  }
+
+  // ✅ 只有当 showPreloader 为 false 时，下面的“真实页面”才会被挂载
   return (
     <Router>
       <ScrollToTop />
@@ -88,6 +106,7 @@ function App() {
                   <span>✨</span>
                   <span className="hidden md:inline">Style</span>
                 </button>
+
                 {isThemeMenuOpen && (
                   <div className="absolute top-10 left-0 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-50">
                     <div className="p-2 text-left">
@@ -140,7 +159,12 @@ function App() {
                     <span className="text-2xl">×</span>
                   ) : (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
                     </svg>
                   )}
                 </button>
@@ -152,7 +176,13 @@ function App() {
                       <NavMenuItem to="/about" icon="📖" label="About Us" onClick={() => setIsNavMenuOpen(false)} />
                       <NavMenuItem to="/alumni" icon="🤝" label="Alumni Wall" onClick={() => setIsNavMenuOpen(false)} />
                       <NavMenuItem to="/campus" icon="🧊" label="3D Campus" onClick={() => setIsNavMenuOpen(false)} />
-                      <NavMenuItem to="/pass" icon="🗂️" label="Student Portal" onClick={() => setIsNavMenuOpen(false)} highlight />
+                      <NavMenuItem
+                        to="/pass"
+                        icon="🗂️"
+                        label="Student Portal"
+                        onClick={() => setIsNavMenuOpen(false)}
+                        highlight
+                      />
                     </div>
                   </div>
                 )}
@@ -168,15 +198,15 @@ function App() {
           onClick={closeAllMenus}
         >
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/cny" element={<HomeCNY />} />
+            <Route path="/" element={<Home userName={loggedInUserName} />} />
+            <Route path="/cny" element={<HomeCNY userName={loggedInUserName} />} />
             <Route path="/about" element={<About />} />
             <Route path="/alumni" element={<Alumni />} />
             <Route path="/rankings" element={<Rankings />} />
             <Route path="/faculties" element={<Faculties />} />
-            <Route path="/pass" element={<PassHub />} />
-            <Route path="/apply" element={<Admission />} />
-            <Route path="/id-card" element={<AlumniCard />} />
+            <Route path="/pass" element={<PassHub userName={loggedInUserName} />} />
+            <Route path="/apply" element={<Admission userName={loggedInUserName} />} />
+            <Route path="/id-card" element={<AlumniCard userName={loggedInUserName} />} />
             <Route path="/news" element={<NewsArchive />} />
             <Route path="/news/:id" element={<NewsDetail />} />
             <Route path="/admin" element={<Admin />} />
@@ -184,18 +214,15 @@ function App() {
             {/* ✅ 3D 校园 */}
             <Route path="/campus" element={<CampusView />} />
 
-            <Route path="*" element={<Home />} />
+            <Route path="*" element={<Home userName={loggedInUserName} />} />
           </Routes>
         </main>
 
-        {/* 📱 手机端底部导航（赛博风 + 深色更有质感 + safe-area + 不挡 Campus 视线） */}
+        {/* 📱 手机端底部导航 */}
         <div className="md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 border-t border-gray-200 dark:border-emerald-500/20 backdrop-blur-2xl z-[100] flex justify-around items-center py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_30px_rgba(0,0,0,0.3)]">
           <BottomNavLink to="/" icon="🏠" label="Home" />
           <BottomNavLink to="/about" icon="📖" label="About" />
-
-          {/* Portal 主按钮：在 /campus 页面自动缩小+降低抬升，避免遮挡 */}
           <BottomNavLink to="/pass" icon="🗂️" label="Portal" isMain />
-
           <BottomNavLink to="/alumni" icon="🤝" label="Alumni" />
           <BottomNavLink to="/campus" icon="🗺️" label="Campus" />
         </div>
