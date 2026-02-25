@@ -1,30 +1,162 @@
-/* ========================= */
-/* SAO 数据流下雨效果 */
-/* ========================= */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@keyframes data-stream {
-  0% {
-    transform: translateY(-110%);
-    opacity: 0;
+/* ============================================================
+   BGU 全球指挥部 - 全局样式协议
+   ============================================================ */
+
+@layer base {
+  :root {
+    --bgu-accent: 16 185 129;
   }
 
-  20% {
-    opacity: 0.7;
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  80% {
-    opacity: 0.7;
+  body {
+    @apply transition-colors duration-500 antialiased;
   }
 
-  100% {
-    transform: translateY(110%);
-    opacity: 0;
+  .dark {
+    color-scheme: dark;
+  }
+
+  /* 暗色标题强制亮色 */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
+    @apply text-slate-50 !important;
+  }
+
+  /* 暗色正文 */
+  .dark p,
+  .dark li,
+  .dark label,
+  .dark time {
+    @apply text-slate-300 !important;
+  }
+
+  .dark .news-container,
+  .dark article {
+    @apply text-slate-300;
+  }
+
+  .dark a:not([class*="bg-"]) {
+    @apply text-emerald-400 hover:text-emerald-300 transition-colors;
+  }
+
+  /* ===== 新增暗色模式增强协议 ===== */
+  
+  /* 暗色模式图片电影感修正 */
+  .dark img {
+    filter: brightness(.85) contrast(1.15);
+    transition: filter 0.5s ease;
+  }
+
+  .dark img:hover {
+    filter: brightness(1) contrast(1);
+  }
+
+  /* 暗色模式输入控件统一背景 */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    @apply bg-slate-900 border-slate-800 text-slate-100 !important;
+  }
+
+  /* 防止 placeholder 在暗色下过亮 */
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    @apply text-slate-500;
+  }
+
+  /* 修正 autofill 在暗色下发白的问题 */
+  .dark input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px #0f172a inset;
+    -webkit-text-fill-color: #f1f5f9;
+    transition: background-color 5000s ease-in-out 0s;
   }
 }
 
-.animate-data-stream {
-  animation: data-stream 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  backface-visibility: hidden;
-  will-change: transform, opacity;
-  z-index: 0;
+/* ============================================================
+   组件层协议
+   ============================================================ */
+
+@layer components {
+
+  /* 悬浮协议 */
+  @keyframes bgu-floating {
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+
+  .animate-bgu-float {
+    animation: bgu-floating 4s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* 数据流背景 */
+  @keyframes data-stream {
+    0% {
+      transform: translateY(-110%);
+      opacity: 0;
+    }
+
+    20% {
+      opacity: 0.6;
+    }
+
+    80% {
+      opacity: 0.6;
+    }
+
+    100% {
+      transform: translateY(110%);
+      opacity: 0;
+    }
+  }
+
+  .animate-data-stream {
+    animation: data-stream 8s linear infinite;
+    will-change: transform, opacity;
+  }
+
+  .animate-data-stream-fast {
+    animation: data-stream 3s linear infinite;
+    will-change: transform, opacity;
+  }
+
+  /* 霓虹发光 */
+  .glow-emerald {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+  }
+
+  /* 隐藏滚动条 */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ============================================================
+   移动端优化
+   ============================================================ */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* prose 暗色适配 */
+.prose.dark\:prose-invert {
+  --tw-prose-body: theme('colors.slate.300');
+  --tw-prose-headings: theme('colors.slate.100');
+  --tw-prose-links: theme('colors.emerald.400');
+  --tw-prose-bold: theme('colors.slate.100');
+  --tw-prose-quotes: theme('colors.slate.100');
 }

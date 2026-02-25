@@ -1,7 +1,6 @@
-// src/pages/NewsDetail.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../supabaseClient'; // 确保路径对应你的配置
 
 function NewsDetail() {
   const { id } = useParams();
@@ -16,8 +15,7 @@ function NewsDetail() {
       setLoading(true);
       setError(null);
 
-      // 同理，通过 id 查询单条
-      const { data: article, error } = await supabase
+      const { data, error } = await supabase
         .from('news')
         .select('*')
         .eq('id', id)
@@ -26,11 +24,9 @@ function NewsDetail() {
       if (error) {
         console.error(error);
         setError(error);
-        setArticle(null);
       } else {
-        setArticle(article);
+        setArticle(data);
       }
-
       setLoading(false);
     };
 
@@ -38,84 +34,133 @@ function NewsDetail() {
     window.scrollTo(0, 0);
   }, [id]);
 
+  // 🚨 加载状态的赛博优化
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center text-slate-600">
-        Loading...
+      <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 dark:text-slate-400 font-mono text-xs tracking-widest animate-pulse uppercase">
+          Decrypting_Data_Stream...
+        </p>
       </div>
     );
   }
 
+  // 🚨 404 状态的暗色修复
   if (error || !article) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center text-slate-800 dark:text-white">
-        <h1 className="text-6xl mb-4">🫥</h1>
-        <h2 className="text-2xl font-bold">404 - News Not Found</h2>
-        <p className="text-slate-500 mt-2">
-          这篇新闻可能被删除了，或者你输入了错误的 id。
+      <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col items-center justify-center px-6">
+        <h1 className="text-8xl mb-6 opacity-20 dark:text-white">🫥</h1>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+          404 - Archive Not Found
+        </h2>
+        <p className="text-slate-500 dark:text-slate-400 mt-4 text-center max-w-sm font-medium leading-relaxed">
+          该报讯文件可能已被校长加密或从校务数据库中抹除。
         </p>
         <button
           onClick={() => navigate(-1)}
-          className="mt-8 text-orange-600 font-bold underline"
+          className="mt-10 px-8 py-3 bg-orange-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-full hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-600/20"
         >
-          返回上一页
+          Back to Archives
         </button>
       </div>
     );
   }
 
   return (
-    <article className="min-h-screen bg-white dark:bg-slate-950 pb-20 transition-colors duration-500">
-      {/* 顶部 Hero */}
-      <div className="w-full h-[40vh] md:h-[60vh] relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/40 z-10" />
+    <article className="min-h-screen bg-white dark:bg-slate-950 pb-32 transition-colors duration-1000">
+      
+      {/* 顶部 Hero 区域 */}
+      <div className="w-full h-[50vh] md:h-[70vh] relative overflow-hidden group">
+        {/* 动态遮罩 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-slate-950/90 z-10" />
+        
         <img
-          src={article.image_url || article.image}
+          src={article.image_url || article.image || 'https://via.placeholder.com/1200x800'}
           alt={article.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
         />
 
+        {/* 返回按钮：增加模糊感 */}
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-6 left-6 z-20 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition"
+          className="absolute top-24 left-6 z-30 w-12 h-12 bg-black/30 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-orange-600 hover:border-orange-500 transition-all duration-300"
         >
           ←
         </button>
 
-        <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-20 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent">
-          <div className="max-w-3xl mx-auto">
-            <span className="inline-block bg-orange-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
-              {article.category}
+        {/* 标题悬浮层 */}
+        <div className="absolute bottom-0 left-0 w-full p-6 md:p-16 z-20">
+          <div className="max-w-4xl mx-auto">
+            <span className="inline-block bg-orange-600 text-white text-[10px] font-black uppercase tracking-[0.3em] px-4 py-1.5 rounded-sm mb-6 shadow-xl">
+              {article.category || 'Gazette'}
             </span>
 
-            <h1 className="text-3xl md:text-5xl font-serif font-bold text-white leading-tight mb-4 drop-shadow-lg">
+            <h1 className="text-3xl md:text-6xl font-serif font-black text-white leading-[1.1] mb-8 drop-shadow-2xl italic">
               {article.title}
             </h1>
 
-            <div className="flex items-center gap-4 text-xs font-mono text-white/70 uppercase tracking-wider">
-              <span>{article.date}</span>
-              <span>•</span>
-              <span>BY {article.author}</span>
+            <div className="flex flex-wrap items-center gap-6 text-[10px] font-mono text-white/60 uppercase tracking-[0.2em]">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                {article.date || new Date(article.created_at).toLocaleDateString()}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="opacity-40">WRITTEN_BY:</span>
+                <span className="text-white font-bold tracking-normal">{article.author || 'Chancellor'}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 正文 */}
-      <div className="max-w-3xl mx-auto px-6 mt-12">
-        <div className="prose prose-lg dark:prose-invert prose-orange max-w-none">
-          {article.content}
+      {/* 正文区域 */}
+      <div className="max-w-3xl mx-auto px-6 mt-16 md:mt-24">
+        {/* 🚨 增加了一个 id="bgu-article-content" 方便精准打击 */}
+        <div 
+          id="bgu-article-content"
+          className="
+            prose prose-slate dark:prose-invert prose-orange prose-lg md:prose-xl max-w-none 
+            transition-colors duration-500
+            /* 强制暗色模式下，无论内联样式写了什么，统统洗掉 */
+            dark:text-slate-300
+            [&_*]:dark:text-slate-300 
+            [&_h1]:dark:text-white [&_h2]:dark:text-white [&_h3]:dark:text-white
+            [&_strong]:dark:text-white
+            [&_a]:dark:text-orange-400
+          "
+        >
+          {/* 💡 如果内容里有 HTML 标签，请使用 dangerouslySetInnerHTML */}
+          {article.content && article.content.includes('<') ? (
+            <div dangerouslySetInnerHTML={{ __html: article.content }} />
+          ) : (
+            article.content?.split('\n').map((para, index) => (
+              <p key={index} className="mb-4">{para}</p>
+            ))
+          )}
         </div>
 
-        <div className="mt-16 pt-8 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-          <div className="text-sm text-slate-500 font-bold">分享：</div>
-          <div className="flex gap-4">
-            <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:text-orange-600 transition">
-              🔗
-            </button>
-            <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:text-red-500 transition">
-              ❤️
-            </button>
+        {/* 底部交互区：协议化设计 */}
+        <div className="mt-24 pt-10 border-t-2 border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="space-y-2">
+              <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Data_Protocol: BGU_v2.1
+              </h4>
+              <p className="text-xs text-slate-400 dark:text-slate-600 italic">
+                本文档受“哥们儿共同体”协议保护，禁止非授权复制。
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase mr-2">Export:</span>
+              <button className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-xl hover:bg-orange-600 hover:text-white transition-all shadow-sm">
+                🔗
+              </button>
+              <button className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                ❤️
+              </button>
+            </div>
           </div>
         </div>
       </div>
