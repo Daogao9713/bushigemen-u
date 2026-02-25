@@ -1,16 +1,11 @@
-// src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-// ✅ 全站声效
-import { playSound } from './utils/audioHelper'; // 确保路径正确
-
-// ✅ 引入 Preloader
+import { playSound } from './utils/audioHelper';
 import Preloader from './components/Preloader';
-
-// ✅ 引入 BroadcastBanner
 import BroadcastBanner from './components/BroadcastBanner';
 
 // === 页面引入 ===
@@ -26,189 +21,153 @@ import PassHub from './pages/PassHub';
 import NewsDetail from './pages/NewsDetail';
 import NewsArchive from './pages/NewsArchive';
 import Admin from './pages/Admin';
-
-// ✅ 新增：CampusView
 import CampusView from './pages/CampusView';
 
 import logo from './logo.jpg';
 
-// === 滚动与动画修复组件 ===
+// === 1. 转场外壳 ===
+const PageWrapper = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, x: 20 }}
+    animate={{ opacity: 1, x: 0 }}
+    exit={{ opacity: 0, x: -20 }}
+    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    className="w-full"
+  >
+    {children}
+  </motion.div>
+);
+
+// === 2. 动画路由逻辑 (修复了 Props 传递) ===
+const AnimatedRoutes = ({ loggedInUserName }) => {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageWrapper><Home userName={loggedInUserName} /></PageWrapper>} />
+        <Route path="/cny" element={<PageWrapper><HomeCNY userName={loggedInUserName} /></PageWrapper>} />
+        <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
+        <Route path="/alumni" element={<PageWrapper><Alumni /></PageWrapper>} />
+        <Route path="/rankings" element={<PageWrapper><Rankings /></PageWrapper>} />
+        <Route path="/faculties" element={<PageWrapper><Faculties /></PageWrapper>} />
+        <Route path="/pass" element={<PageWrapper><PassHub userName={loggedInUserName} /></PageWrapper>} />
+        <Route path="/apply" element={<PageWrapper><Admission userName={loggedInUserName} /></PageWrapper>} />
+        <Route path="/id-card" element={<PageWrapper><AlumniCard userName={loggedInUserName} /></PageWrapper>} />
+        <Route path="/news" element={<PageWrapper><NewsArchive /></PageWrapper>} />
+        <Route path="/news/:id" element={<PageWrapper><NewsDetail /></PageWrapper>} />
+        <Route path="/admin" element={<PageWrapper><Admin /></PageWrapper>} />
+        <Route path="/campus" element={<PageWrapper><CampusView /></PageWrapper>} />
+        <Route path="*" element={<PageWrapper><Home userName={loggedInUserName} /></PageWrapper>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
-    setTimeout(() => {
-      AOS.refresh();
-    }, 100);
+    setTimeout(() => { AOS.refresh(); }, 100);
   }, [pathname]);
   return null;
 }
 
 function App() {
+  const [showPreloader, setShowPreloader] = useState(true);
+  const [loggedInUserName, setLoggedInUserName] = useState('');
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isBroadcastActive, setIsBroadcastActive] = useState(false);
+
   useEffect(() => {
     AOS.init({ once: true, offset: 10, duration: 500 });
   }, []);
 
-  // ✅✅ 全站震动增强：监听 button / a / input 的点击（含其父级）
+  // 全局震动
   useEffect(() => {
+    if (showPreloader) return;
     const handleGlobalClick = (e) => {
-      // e.target 可能是 TextNode，先兜底成 Element
-      const el = e.target instanceof Element ? e.target : e.target?.parentElement;
-      if (!el) return;
-
-      const target = el.closest('button, a, input');
-      if (target) {
-        // 1. 声音反馈 (PC端爽)
-        // playSound('confirm');
-
-        // 2. 物理反馈 (手机端爽)
-        if ('vibrate' in navigator) {
-          navigator.vibrate(15); // 每点一下按钮，短促有力地震一下
-        }
-      }
+      const target = e.target.closest('button, a, input');
+      if (target && 'vibrate' in navigator) navigator.vibrate(15);
     };
+    document.addEventListener('pointerdown', handleGlobalClick);
+    return () => document.removeEventListener('pointerdown', handleGlobalClick);
+  }, [showPreloader]);
 
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
-  }, []);
-
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
-
-  // ✅ 初始状态设为 false，由 Banner 内部获取数据库后回传
-  const [isBroadcastActive, setIsBroadcastActive] = useState(false);
-
-  // ✅ Preloader 控制状态
-  const [showPreloader, setShowPreloader] = useState(true);
-  const [loggedInUserName, setLoggedInUserName] = useState('');
-
-  // ✅ 高度常量定义
-  const BANNER_H = 32; // 对应 h-8
-  const NAV_H = 64; // 对应 h-16
-
-  // ✅ 动态计算主内容的 PaddingTop，确保内容永远在 Header 下方开始
-  const topPadding = useMemo(() => {
-    return (isBroadcastActive ? BANNER_H : 0) + NAV_H;
-  }, [isBroadcastActive]);
+  const BANNER_H = 32;
+  const NAV_H = 64;
+  const topPadding = useMemo(() => (isBroadcastActive ? BANNER_H : 0) + NAV_H, [isBroadcastActive]);
 
   const closeAllMenus = () => {
     setIsNavMenuOpen(false);
     setIsThemeMenuOpen(false);
   };
 
-  // ✅✅ 核心改动：Preloader 没结束前，直接 return，只渲染 Preloader（其余全部 Unmount / 不挂载）
   if (showPreloader) {
-    return (
-      <Preloader
-        onLoaded={() => setShowPreloader(false)}
-        onNameSubmitted={(name) => setLoggedInUserName(name)}
-      />
-    );
+    return <Preloader onLoaded={() => setShowPreloader(false)} onNameSubmitted={setLoggedInUserName} />;
   }
 
-  // ✅ 只有当 showPreloader 为 false 时，下面的“真实页面”才会被挂载
   return (
     <Router>
       <ScrollToTop />
-
-      <div className="bg-gray-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden">
-        {/* 🚨 核心方案：Header 设为 fixed，内部元素自然排列 */}
-        <header className="fixed top-0 w-full z-50 flex flex-col transition-all duration-500">
-          {/* 1. 警报条：务必确保 BroadcastBanner 内部没有 fixed 定位 */}
+      <div className="bg-gray-50 dark:bg-slate-950 min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden">
+        
+        <header className="fixed top-0 w-full z-[100] flex flex-col transition-all duration-500">
           <BroadcastBanner onActiveChange={setIsBroadcastActive} />
-
-          {/* 2. 导航栏：它会根据 Banner 是否存在自动上下滑动 */}
-          <nav className="h-16 w-full bg-white/95 text-slate-800 border-b border-gray-100 dark:border-slate-800 backdrop-blur-md shadow-sm dark:bg-slate-900/95 dark:text-slate-100 flex items-center">
+          <nav className="h-16 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 flex items-center">
             <div className="max-w-7xl mx-auto px-4 w-full flex justify-between items-center">
-              {/* 左侧：Style 按钮 */}
+              
+              {/* Style 按钮修复 */}
               <div className="flex-1 flex justify-start relative">
                 <button
-                  onClick={() => {
-                    setIsThemeMenuOpen((v) => !v);
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsThemeMenuOpen(!isThemeMenuOpen);
                     setIsNavMenuOpen(false);
                   }}
                   className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                 >
-                  <span>✨</span>
-                  <span className="hidden md:inline">Style</span>
+                  <span>✨</span> <span className="hidden md:inline">Style</span>
                 </button>
-
                 {isThemeMenuOpen && (
-                  <div className="absolute top-10 left-0 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-50">
-                    <div className="p-2 text-left">
-                      <Link
-                        onClick={() => setIsThemeMenuOpen(false)}
-                        to="/"
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
-                      >
-                        🏛️ Main Campus
-                      </Link>
-                      <Link
-                        onClick={() => setIsThemeMenuOpen(false)}
-                        to="/cny"
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition mt-1"
-                      >
-                        🧧 Lunar New Year
-                      </Link>
+                  <div className="absolute top-12 left-0 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-[110]">
+                    <div className="p-2 text-left space-y-1">
+                      <Link onClick={closeAllMenus} to="/" className="block px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🏛️ Main Campus</Link>
+                      <Link onClick={closeAllMenus} to="/cny" className="block px-3 py-2 text-sm text-red-600 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">🧧 Lunar New Year</Link>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* 中间：Logo */}
-              <Link
-                to="/"
-                className="flex-shrink-0 flex flex-col items-center justify-center group select-none"
-                onClick={closeAllMenus}
-              >
+              {/* Logo */}
+              <Link to="/" className="flex-shrink-0 flex flex-col items-center group select-none" onClick={closeAllMenus}>
                 <div className="flex items-center gap-2">
                   <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
-                  <h1 className="text-lg font-black tracking-tighter leading-none text-slate-900 dark:text-white">
-                    BGU
-                  </h1>
+                  <h1 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">BGU</h1>
                 </div>
-                <p className="text-[6px] uppercase tracking-[0.3em] mt-0.5 opacity-60 font-bold dark:text-slate-400">
-                  Bushigemen
-                </p>
+                <p className="text-[6px] uppercase tracking-[0.3em] opacity-60 font-bold dark:text-slate-400">Bushigemen</p>
               </Link>
 
-              {/* 右侧：菜单按钮 */}
+              {/* 菜单按钮修复 */}
               <div className="flex-1 flex justify-end relative">
-                <button
-                  onClick={() => {
-                    setIsNavMenuOpen((v) => !v);
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsNavMenuOpen(!isNavMenuOpen);
                     setIsThemeMenuOpen(false);
                   }}
-                  className="p-2 -mr-2 text-slate-600 dark:text-slate-300 hover:text-orange-600 transition"
+                  className="p-2 text-slate-600 dark:text-slate-300 hover:text-orange-600 transition"
                 >
-                  {isNavMenuOpen ? (
-                    <span className="text-2xl">×</span>
-                  ) : (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 6h16M4 12h16M4 18h16"
-                      />
-                    </svg>
-                  )}
+                  {isNavMenuOpen ? <span className="text-2xl">×</span> : <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg>}
                 </button>
-
                 {isNavMenuOpen && (
-                  <div className="absolute top-12 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 p-3 z-50 text-left">
-                    <div className="flex flex-col gap-1 text-left">
-                      <NavMenuItem to="/" icon="🏠" label="Home" onClick={() => setIsNavMenuOpen(false)} />
-                      <NavMenuItem to="/about" icon="📖" label="About Us" onClick={() => setIsNavMenuOpen(false)} />
-                      <NavMenuItem to="/alumni" icon="🤝" label="Alumni Wall" onClick={() => setIsNavMenuOpen(false)} />
-                      <NavMenuItem to="/campus" icon="🧊" label="3D Campus" onClick={() => setIsNavMenuOpen(false)} />
-                      <NavMenuItem
-                        to="/pass"
-                        icon="🗂️"
-                        label="Student Portal"
-                        onClick={() => setIsNavMenuOpen(false)}
-                        highlight
-                      />
+                  <div className="absolute top-12 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 p-3 z-[110]">
+                    <div className="flex flex-col gap-1">
+                      <NavMenuItem to="/" icon="🏠" label="Home" onClick={closeAllMenus} />
+                      <NavMenuItem to="/about" icon="📖" label="About Us" onClick={closeAllMenus} />
+                      <NavMenuItem to="/alumni" icon="🤝" label="Alumni Wall" onClick={closeAllMenus} />
+                      <NavMenuItem to="/campus" icon="🧊" label="3D Campus" onClick={closeAllMenus} />
+                      <NavMenuItem to="/pass" icon="🗂️" label="Student Portal" onClick={closeAllMenus} highlight />
                     </div>
                   </div>
                 )}
@@ -217,102 +176,48 @@ function App() {
           </nav>
         </header>
 
-        {/* 3. 内容区域：根据 Banner 状态动态调整 Padding */}
-        <main
-          className="flex-grow pb-24 md:pb-0 transition-all duration-500 ease-in-out"
+        {/* 主内容点击会自动收起菜单 */}
+        <main 
+          className="flex-grow overflow-x-hidden relative" 
           style={{ paddingTop: topPadding }}
           onClick={closeAllMenus}
         >
-          <Routes>
-            <Route path="/" element={<Home userName={loggedInUserName} />} />
-            <Route path="/cny" element={<HomeCNY userName={loggedInUserName} />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/alumni" element={<Alumni />} />
-            <Route path="/rankings" element={<Rankings />} />
-            <Route path="/faculties" element={<Faculties />} />
-            <Route path="/pass" element={<PassHub userName={loggedInUserName} />} />
-            <Route path="/apply" element={<Admission userName={loggedInUserName} />} />
-            <Route path="/id-card" element={<AlumniCard userName={loggedInUserName} />} />
-            <Route path="/news" element={<NewsArchive />} />
-            <Route path="/news/:id" element={<NewsDetail />} />
-            <Route path="/admin" element={<Admin />} />
-
-            {/* ✅ 3D 校园 */}
-            <Route path="/campus" element={<CampusView />} />
-
-            <Route path="*" element={<Home userName={loggedInUserName} />} />
-          </Routes>
+          <AnimatedRoutes loggedInUserName={loggedInUserName} />
         </main>
 
-        {/* 📱 手机端底部导航 */}
-        <div className="md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 border-t border-gray-200 dark:border-emerald-500/20 backdrop-blur-2xl z-[100] flex justify-around items-center py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_30px_rgba(0,0,0,0.3)]">
+        {/* 📱 手机底部导航 */}
+        <div className="md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl z-[100] border-t border-gray-200 dark:border-emerald-500/20 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] flex justify-around shadow-2xl">
           <BottomNavLink to="/" icon="🏠" label="Home" />
           <BottomNavLink to="/about" icon="📖" label="About" />
           <BottomNavLink to="/pass" icon="🗂️" label="Portal" isMain />
           <BottomNavLink to="/alumni" icon="🤝" label="Alumni" />
           <BottomNavLink to="/campus" icon="🗺️" label="Campus" />
         </div>
-
-        {/* 页脚 */}
-        <footer className="bg-slate-950 text-slate-400 py-10 mt-auto hidden md:block">
-          <div className="max-w-7xl mx-auto px-6 text-center text-xs">
-            <p className="tracking-widest uppercase opacity-60">© 2026 Bushigemen University.</p>
-          </div>
-        </footer>
       </div>
     </Router>
   );
 }
 
-// --- 辅助小组件 ---
+// 辅助组件 (修正了状态关闭逻辑)
 function NavMenuItem({ to, icon, label, onClick, highlight }) {
   return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${
-        highlight
-          ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600'
-          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-      }`}
-    >
-      <span className="text-lg">{icon}</span>
-      <span>{label}</span>
+    <Link to={to} onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${highlight ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+      <span className="text-lg">{icon}</span><span>{label}</span>
     </Link>
   );
 }
 
 function BottomNavLink({ to, icon, label, isMain }) {
   const location = useLocation();
-
-  const isActive =
-    location.pathname === to || (to === '/pass' && ['/pass', '/apply', '/id-card'].includes(location.pathname));
-
-  // ✅ Campus 页面降低遮挡：主按钮缩小、抬升变小
+  const isActive = location.pathname === to || (to === '/pass' && ['/pass', '/apply', '/id-card'].includes(location.pathname));
   const isCampus = location.pathname === '/campus';
-  const mainSize = isCampus ? 'w-12 h-12 text-xl' : 'w-14 h-14 text-2xl';
-  const mainLift = isCampus ? '-top-3' : '-top-5';
-
-  if (isMain) {
-    return (
-      <Link to={to} className={`relative ${mainLift}`}>
-        <div
-          className={[
-            mainSize,
-            'rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90',
-            isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white',
-          ].join(' ')}
-        >
-          {icon}
-        </div>
-      </Link>
-    );
-  }
-
   return (
-    <Link to={to} className={`flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600' : 'text-slate-400'}`}>
-      <span className="text-xl">{icon}</span>
-      <span className="text-[10px] font-medium">{label}</span>
+    <Link to={to} className={isMain ? "relative -top-5" : `flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600' : 'text-slate-400'}`}>
+      {isMain ? (
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90 ${isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white'}`}>{icon}</div>
+      ) : (
+        <><span className="text-xl">{icon}</span><span className="text-[10px] font-medium">{label}</span></>
+      )}
     </Link>
   );
 }
