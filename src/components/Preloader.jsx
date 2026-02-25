@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { playSound } from '../utils/audioHelper';
 
 const Preloader = ({ onLoaded, onNameSubmitted }) => {
   const [progress, setProgress] = useState(0);
@@ -32,24 +33,41 @@ const Preloader = ({ onLoaded, onNameSubmitted }) => {
 
   const handleAccess = (e) => {
     e.preventDefault();
-    if (!userName.trim()) return;
-    if ("vibrate" in navigator) navigator.vibrate([50, 30, 50]);
+    if (!userName.trim() || !isLocked) return;
+
+    // 🚨 1. 物理反馈 + 听觉反馈 (最优先触发)
+    if ("vibrate" in navigator) navigator.vibrate([40, 30, 40]);
+    playSound('confirm'); 
+
+    // 🚨 2. 状态锁定，防止二次点击
     setIsLocked(false);
     localStorage.setItem('bgu_user_name', userName.trim());
     onNameSubmitted(userName.trim());
-    let p = progress;
+
+    // 🚨 3. 冲刺逻辑：使用当前最新进度值开始
+    let currentP = progress; 
     const fast = setInterval(() => {
-      p += 4;
-      if (p >= 100) {
-        setProgress(100); clearInterval(fast);
-        setTimeout(() => setIsExiting(true), 200);
-        setTimeout(() => onLoaded(), 1000);
-      } else { setProgress(p); }
+      currentP += 5; // 加快冲刺感
+      if (currentP >= 100) {
+        currentP = 100;
+        setProgress(100);
+        clearInterval(fast);
+        
+        // 🚀 系统启动音与消散动画
+        setTimeout(() => {
+          playSound('startup');
+          setIsExiting(true);
+        }, 200);
+        
+        setTimeout(() => onLoaded(), 1100);
+      } else { 
+        setProgress(currentP); 
+      }
     }, 30);
   };
 
   return (
-    <div className={`fixed inset-0 ${theme.bg} ${theme.text} z-[99999] flex flex-col items-center justify-between font-mono transition-all duration-700 ${isExiting ? 'opacity-0 scale-110 blur-2xl' : 'opacity-100'} py-12 px-6`}>
+    <div className={`fixed inset-0 ${theme.bg} ${theme.text} z-[99999] flex flex-col items-center justify-between font-mono transition-all duration-700 ease-in-out ${isExiting ? 'opacity-0 scale-110 blur-2xl' : 'opacity-100'} py-12 px-6`}>
       
       {/* 1. 背景动画 */}
       <div className="absolute inset-0 opacity-[0.1] pointer-events-none">
@@ -60,7 +78,7 @@ const Preloader = ({ onLoaded, onNameSubmitted }) => {
         </div>
       </div>
 
-      {/* 2. 中间核心区：使用 flex-grow 自动撑开空间 */}
+      {/* 2. 中间核心区 */}
       <div className="flex-grow flex flex-col items-center justify-center w-full z-10">
         <div className={`w-48 h-48 md:w-64 md:h-64 rounded-full border-[1px] ${theme.border} flex items-center justify-center relative mb-8 md:mb-12 shadow-[0_0_40px] ${theme.glow}`}>
           <div className={`absolute inset-[-8px] border-t-2 ${theme.border} rounded-full animate-spin-slow`}></div>
@@ -70,7 +88,6 @@ const Preloader = ({ onLoaded, onNameSubmitted }) => {
           </div>
         </div>
 
-        {/* 🚨 输入面板：去掉 absolute，改为自然流 */}
         <div className="w-full max-w-xs space-y-4">
           <form onSubmit={handleAccess} className="space-y-4">
             <div className={`relative border ${theme.border} bg-white/5 p-1 backdrop-blur-md`}>
@@ -96,25 +113,24 @@ const Preloader = ({ onLoaded, onNameSubmitted }) => {
         </div>
       </div>
 
-      {/* 3. 底部进度区：去掉 fixed bottom，让它在 flex 容器底部排队 */}
+      {/* 3. 底部进度区 */}
       <div className="w-full max-w-xs pt-8">
-        <div className="flex justify-between text-[10px] mb-2 font-bold tracking-tighter">
-          <span className="truncate">{isLocked ? 'SYSTEM_LOCKED' : 'VERIFIED'}</span>
+        <div className="flex justify-between text-[10px] mb-2 font-bold tracking-tighter uppercase">
+          <span className="truncate">{isLocked ? 'SYSTEM_LOCKED' : 'AUTH_SUCCESS'}</span>
           <span>{Math.floor(progress)}%</span>
         </div>
         <div className="h-[2px] w-full bg-white/10 relative overflow-hidden">
           <div 
-            className={`h-full bg-${theme.accent}-500 transition-all duration-300 ease-out`}
-            style={{ width: `${progress}%`, boxShadow: `0 0 10px var(--tw-shadow-color)` }}
+            className={`h-full bg-${theme.accent}-500 transition-all duration-300 ease-out shadow-[0_0_8px]`}
+            style={{ width: `${progress}%` }}
           ></div>
         </div>
         <div className="mt-3 h-12 overflow-hidden">
           {logs.map((log, i) => (
-            <p key={i} className="text-[8px] opacity-40 font-mono italic truncate">{log}</p>
+            <p key={i} className="text-[8px] opacity-40 font-mono italic truncate leading-relaxed">{log}</p>
           ))}
         </div>
       </div>
-
     </div>
   );
 };

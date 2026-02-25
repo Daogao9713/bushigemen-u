@@ -4,6 +4,9 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
+// ✅ 全站声效
+import { playSound } from './utils/audioHelper'; // 确保路径正确
+
 // ✅ 引入 Preloader
 import Preloader from './components/Preloader';
 
@@ -44,6 +47,32 @@ function ScrollToTop() {
 function App() {
   useEffect(() => {
     AOS.init({ once: true, offset: 10, duration: 500 });
+  }, []);
+
+  // ✅✅ 全站声效监听器：监听 button / a 的点击（含其父级）
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      // e.target 可能是 TextNode，先兜底成 Element
+      const el = e.target instanceof Element ? e.target : e.target?.parentElement;
+      if (!el) return;
+
+      const target = el.closest('button, a');
+      if (!target) return;
+
+      // 可选：排除不想发声的元素
+      if (target.classList.contains('no-sound')) return;
+
+      // 可选：disabled 按钮不发声
+      if (target.tagName === 'BUTTON' && target.disabled) return;
+
+      playSound('confirm');
+
+      // 手机端轻微震动反馈（可选）
+      if ('vibrate' in navigator) navigator.vibrate(15);
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
 
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
