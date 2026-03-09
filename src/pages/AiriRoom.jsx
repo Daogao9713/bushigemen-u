@@ -23,16 +23,43 @@ const AiriRoom = () => {
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  // --- 2. 调律参数 (✅ 已固化校长调试的黄金参数) ---
-  const [brightness, setBrightness] = useState(196);      // 预设亮度: 196
-  const [magicScale, setMagicScale] = useState(0.6);      // 预设阵法大小: 0.6
-  const [roxyScale, setRoxyScale] = useState(2.35);       // 预设 Roxy 大小: 2.35
-  const [roxyX, setRoxyX] = useState(119);                // 预设水平位移: 119
-  const [roxyY, setRoxyY] = useState(257);                // 预设垂直位移: 257
-  const [spinSpeed, setSpinSpeed] = useState(2.5);        // 预设转速: 2.5
+  // --- 2. 核心锁定协议 (防止手机端畸变) ---
+  useEffect(() => {
+    // 1. 强制禁止 touchmove 产生的橡皮筋效果
+    const preventDefault = (e) => {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        if (e.cancelable) e.preventDefault();
+      }
+    };
+    document.addEventListener('touchmove', preventDefault, { passive: false });
+
+    // 2. 页面载入时锁定 body 样式
+    document.body.style.position = 'fixed';
+    document.body.style.overflow = 'hidden';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.removeEventListener('touchmove', preventDefault);
+      document.body.style.position = '';
+      document.body.style.overflow = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.body.style.overscrollBehavior = '';
+    };
+  }, []);
+
+  // --- 3. 调律参数 (校长黄金参数) ---
+  const [brightness, setBrightness] = useState(196);      
+  const [magicScale, setMagicScale] = useState(0.6);      
+  const [roxyScale, setRoxyScale] = useState(2.35);       
+  const [roxyX, setRoxyX] = useState(119);                
+  const [roxyY, setRoxyY] = useState(257);                
+  const [spinSpeed, setSpinSpeed] = useState(2.5);        
   const [showPanel, setShowPanel] = useState(false);
   
-  // --- 3. 仪式感三阶段加载 ---
+  // --- 4. 仪式感三阶段加载 ---
   const [isLoading, setIsLoading] = useState(true);
   const [loadStage, setLoadStage] = useState('INIT');
 
@@ -44,7 +71,7 @@ const AiriRoom = () => {
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
-  // --- 4. 对话系统 ---
+  // --- 5. 对话系统 ---
   const [speaker, setSpeaker] = useState('ROXY');
   const [message, setMessage] = useState('吾在此处感受汝之内心，来诉说吧');
   const [displayedText, setDisplayedText] = useState('');
@@ -94,7 +121,8 @@ const AiriRoom = () => {
   };
 
   return (
-    <div className={`h-[100dvh] w-screen relative overflow-hidden transition-all duration-1000 bg-gradient-to-br ${theme.bg}`}>
+    // ✅ fixed inset-0 配合 touch-none 彻底杜绝滑动畸变
+    <div className={`fixed inset-0 h-[100dvh] w-screen overflow-hidden transition-all duration-1000 bg-gradient-to-br ${theme.bg} touch-none`}>
       
       <style>{`
         @keyframes bgu-spin-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -139,9 +167,9 @@ const AiriRoom = () => {
         </div>
       </div>
 
-      {/* 🎭 Roxy 展示区 (✅ 应用黄金比例) */}
-      <div className="absolute inset-x-0 top-0 h-[70vh] flex items-center justify-center z-10 pointer-events-none overflow-hidden"
-         style={{ transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})`, transformOrigin: 'center center'}}>
+      {/* 🎭 Roxy 展示区 - 修正为 h-full 防止位移截断 */}
+      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none overflow-hidden"
+           style={{ transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})`, transformOrigin: 'center center'}}>
         <div className="w-full h-full max-w-4xl">
           <Live2DMascot modelUrl="/live2d/Rory/Roxy_V1.model3.json" />
         </div>
@@ -149,48 +177,39 @@ const AiriRoom = () => {
 
       {/* 💬 对话框 */}
       <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-20">
-      
-      <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 pb-20 md:pb-8 shadow-2xl transition-all ${theme.box}`}>
-
-      <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl ${theme.name}`}>
-      {speaker}
-    </div>
-
-    <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4">
-      {displayedText}
-      <span className="inline-block w-1.5 h-5 ml-2 bg-current animate-bounce" />
-    </div>
-
-    <form onSubmit={handleSend} className={`relative flex items-center pt-4 border-t ${theme.inputLine}`}>
-      <span className={`mr-3 animate-pulse font-black ${theme.icon}`}>▶</span>
-
-      <input
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        placeholder="请在这里诉说 TELL ME HERE"
-        className={`bg-transparent w-full outline-none font-mono text-sm tracking-widest ${theme.inputText}`}
-      />
-
-    </form>
-
-  </div>
-
-</div>
+        <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 pb-20 md:pb-8 shadow-2xl transition-all ${theme.box}`}>
+          <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl ${theme.name}`}>
+            {speaker}
+          </div>
+          <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4">
+            {displayedText}
+            <span className="inline-block w-1.5 h-5 ml-2 bg-current animate-bounce" />
+          </div>
+          <form onSubmit={handleSend} className={`relative flex items-center pt-4 border-t ${theme.inputLine}`}>
+            <span className={`mr-3 animate-pulse font-black ${theme.icon}`}>▶</span>
+            <input 
+              type="text" 
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="请在这里诉说 TELL ME HERE"
+              className={`bg-transparent w-full outline-none font-mono text-sm tracking-widest ${theme.inputText}`}
+            />
+          </form>
+        </div>
+      </div>
 
       {/* 🛠️ 侧边调律面板 */}
       <div className={`fixed top-1/2 -translate-y-1/2 left-0 z-[110] transition-all duration-500 ${showPanel ? 'translate-x-0' : '-translate-x-[calc(100%-24px)]'}`}>
         <div className="flex">
           <div className={`p-6 rounded-r-3xl border-y border-r shadow-2xl w-64 backdrop-blur-xl ${isDayMode ? 'bg-white/95 border-sky-200' : 'bg-slate-900/95 border-purple-500/40'}`}>
             <h3 className={`text-[10px] font-black mb-6 tracking-widest uppercase opacity-70 ${isDayMode ? 'text-sky-900' : 'text-purple-100'}`}>Alignment_Tuning</h3>
-            <ControlSlider label="ROXY_SCALE" val={roxyScale} set={setRoxyScale} min={0.5} max={3.0} step={0.01} isDay={isDayMode} />
-            <ControlSlider label="Y_OFFSET (上下)" val={roxyY} set={setRoxyY} min={-100} max={400} isDay={isDayMode} />
-            <ControlSlider label="X_OFFSET (左右)" val={roxyX} set={setRoxyX} min={-300} max={300} isDay={isDayMode} />
-            <ControlSlider label="MAGIC_SIZE" val={magicScale} set={setMagicScale} min={0.2} max={1.3} step={0.01} isDay={isDayMode} />
+            <ControlSlider label="ROXY_SCALE" val={roxyScale} set={setRoxyScale} min={0.5} max={3.5} step={0.01} isDay={isDayMode} />
+            <ControlSlider label="Y_OFFSET" val={roxyY} set={setRoxyY} min={-200} max={600} isDay={isDayMode} />
+            <ControlSlider label="X_OFFSET" val={roxyX} set={setRoxyX} min={-400} max={400} isDay={isDayMode} />
+            <ControlSlider label="MAGIC_SIZE" val={magicScale} set={setMagicScale} min={0.2} max={1.5} step={0.01} isDay={isDayMode} />
             <ControlSlider label="BRIGHTNESS" val={brightness} set={setBrightness} min={50} max={250} isDay={isDayMode} />
             <ControlSlider label="SPIN_RATE" val={spinSpeed} set={setSpinSpeed} min={0.1} max={8} step={0.1} isDay={isDayMode} />
             <div className="mt-8 pt-4 border-t border-current/10 flex items-center justify-between text-[10px] font-bold">
-              {/* ✅ RESET 现在会重置到校长的黄金参数 */}
               <button onClick={() => {setRoxyScale(2.35); setRoxyX(119); setRoxyY(257); setMagicScale(0.6); setBrightness(196); setSpinSpeed(2.5);}} className="opacity-40 hover:opacity-100 transition-opacity">RESET_CHANCELLOR</button>
               <button onClick={() => setIsDayMode(!isDayMode)} className={`w-10 h-5 rounded-full relative transition-colors ${isDayMode ? 'bg-slate-300' : 'bg-purple-600'}`}>
                 <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isDayMode ? 'left-1' : 'left-6'}`} />
@@ -213,7 +232,7 @@ const AiriRoom = () => {
 };
 
 const ControlSlider = ({ label, val, set, min, max, step = 1, isDay }) => (
-  <div className="mb-4">
+  <div className="mb-4 text-left">
     <div className={`flex justify-between text-[9px] mb-1 font-mono font-bold ${isDay ? 'text-sky-900' : 'text-purple-100'}`}>
       <span>{label}</span><span>{val}</span>
     </div>
