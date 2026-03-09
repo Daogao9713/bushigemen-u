@@ -5,6 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import CampusMap from '../components/CampusMap';
 
+const vibrateDevice = (duration = 50) => {
+  if (navigator.vibrate) {
+    navigator.vibrate(duration);
+  }
+};
+
 // 动画预设
 const fadeUpVariant = {
   hidden: { opacity: 0, y: 40 },
@@ -48,6 +54,20 @@ export default function Home({ userName: propUserName }) {
     { id: 'pass', label: 'Student Portal', icon: '🗂️', to: '/pass', angle: 36 },
     { id: 'news', label: 'Meme Archive', icon: '🗞️', to: '/news', angle: 108 },
   ];
+
+  const handleAICoreClick = (e) => {
+  e.stopPropagation(); // 阻止冒泡给外层大球
+  
+  if (!isSphereHovered) {
+    // 状态 A: 菜单没开。点击动作 -> 只开菜单，不跳转
+    e.preventDefault(); 
+    setIsSphereHovered(true);
+    vibrateDevice(20); 
+  } else {
+    // 状态 B: 菜单已经开了。点击动作 -> 执行跳转 (默认行为)
+    vibrateDevice(50); 
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-700 font-sans">
@@ -123,8 +143,6 @@ export default function Home({ userName: propUserName }) {
       </header>
 
       {/* ================= 2. 科技核心引力球 (全息中控区) ================= */}
-      <section className="relative py-32 bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center overflow-hidden z-20 transition-colors border-b border-slate-200 dark:border-slate-900">
-        
         <div className="text-center mb-16 relative z-30">
           <h2 className="text-sm font-black tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500">System_Nexus</h2>
         </div>
@@ -164,24 +182,69 @@ export default function Home({ userName: propUserName }) {
           </div>
         </div>
 
-        {/* 核心引力球区 */}
+        {/* ================= 2. 科技核心引力球 (全息中控区) ================= */}
+      <section className="relative py-32 bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center overflow-hidden z-20 transition-colors border-b border-slate-200 dark:border-slate-900">
+        
+        <div className="text-center mb-16 relative z-30">
+          <h2 className="text-sm font-black tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500">System_Nexus</h2>
+        </div>
+
+        {/* --- 左侧全息数据面板 (PC端显示，增加细节) --- */}
+        <div className="hidden lg:flex absolute left-12 top-1/2 -translate-y-1/2 flex-col gap-6 w-56 opacity-80 z-10">
+          <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
+            <h3 className="text-[10px] font-black text-sky-600 dark:text-sky-400 font-mono border-b border-sky-500/20 pb-2 mb-3 uppercase tracking-widest text-left">Sys.Telemetry</h3>
+            <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 space-y-2">
+              <p className="flex justify-between"><span>ETHER_LINK:</span> <span className="text-emerald-500 font-bold animate-pulse">STABLE</span></p>
+              <p className="flex justify-between"><span>LATENCY:</span> <span>12ms</span></p>
+              <p className="flex justify-between"><span>TUITION_DEBT:</span> <span className="text-red-500 font-bold">OVERFLOW</span></p>
+            </div>
+            {/* 动态柱状图 */}
+            <div className="flex gap-1 items-end h-8 mt-4 border-b border-slate-300 dark:border-slate-700 pb-1">
+              <div className="w-2 bg-sky-400/50 h-[60%] animate-pulse"></div>
+              <div className="w-2 bg-sky-400/70 h-[40%] animate-pulse delay-75"></div>
+              <div className="w-2 bg-sky-400/50 h-[80%] animate-pulse delay-150"></div>
+              <div className="w-2 bg-sky-500 h-[100%]"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- 右侧全息指标面板 (PC端显示) --- */}
+        <div className="hidden lg:flex absolute right-12 top-1/2 -translate-y-1/2 flex-col gap-6 w-56 opacity-80 z-10">
+          <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl text-right">
+            <h3 className="text-[10px] font-black text-orange-600 dark:text-orange-500 font-mono border-b border-orange-500/20 pb-2 mb-3 uppercase tracking-widest">Global.Metrics</h3>
+            <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 space-y-2">
+              <p className="flex justify-between"><span>ACTIVE_BROS:</span> <span>9,024</span></p>
+              <p className="flex justify-between"><span>SLEEP_INDEX:</span> <span className="text-emerald-500 font-bold">MAX</span></p>
+              <p className="flex justify-between"><span>SHRIMP_PEELED:</span> <span>88,412</span></p>
+            </div>
+            {/* 动态雷达指示器 */}
+            <div className="w-10 h-10 rounded-full border-2 border-dashed border-orange-500/50 animate-[spin_10s_linear_infinite] ml-auto mt-4 flex items-center justify-center">
+               <div className="w-4 h-4 rounded-full bg-orange-500/20 animate-ping"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* 🚀 核心引力球区 (重构点击逻辑) */}
         <div 
-          className="relative w-[300px] h-[300px] md:w-[450px] md:h-[450px] flex items-center justify-center z-30"
-          onMouseEnter={() => setIsSphereHovered(true)}
-          onMouseLeave={() => setIsSphereHovered(false)}
-          onClick={() => setIsSphereHovered(!isSphereHovered)}
+          className="relative w-[300px] h-[300px] md:w-[450px] md:h-[450px] flex items-center justify-center z-30 touch-none cursor-pointer"
+          onClick={(e) => {
+            // 点击球体空白处或旋转边框，切换卫星菜单
+            setIsSphereHovered(!isSphereHovered);
+            vibrateDevice(20);
+          }}
         >
           {/* 环境光晕 */}
           <div className="absolute inset-0 bg-sky-500/5 dark:bg-sky-400/5 blur-[80px] rounded-full pointer-events-none" />
 
-          {/* 阵法底纹 */}
+          {/* 阵法底纹 (外) */}
           <div className="absolute inset-0 border border-dashed border-slate-300 dark:border-sky-400/20 rounded-full animate-[spin_40s_linear_infinite]" />
+          {/* 阵法底纹 (内) */}
           <div className="absolute inset-12 border border-slate-200 dark:border-sky-400/10 rounded-full animate-[spin_20s_linear_infinite_reverse]" />
 
           {/* 卫星节点 (展开动画) */}
           <AnimatePresence>
             {isSphereHovered && sphereNodes.map((node) => {
-              const radius = window.innerWidth < 768 ? 140 : 200;
+              const radius = window.innerWidth < 768 ? 140 : 210; // 稍微调大一点半径，防止挤在一起
               const x = Math.sin((node.angle * Math.PI) / 180) * radius;
               const y = -Math.cos((node.angle * Math.PI) / 180) * radius;
 
@@ -192,11 +255,12 @@ export default function Home({ userName: propUserName }) {
                   animate={{ opacity: 1, x, y, scale: 1 }}
                   exit={{ opacity: 0, x: 0, y: 0, scale: 0 }}
                   transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                  className="absolute z-10"
+                  className="absolute z-40" // 提高层级，确保在光晕上方
+                  onClick={(e) => e.stopPropagation()} // 防止点击卫星菜单时关闭自己
                 >
                   <Link 
                     to={node.to} 
-                    className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-2xl hover:scale-110 hover:border-sky-500 dark:hover:border-sky-400 transition-all group"
+                    className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-full shadow-2xl hover:scale-110 active:scale-95 hover:border-sky-500 dark:hover:border-sky-400 transition-all group"
                   >
                     <span className="text-xl md:text-2xl mb-1 group-hover:animate-bounce">{node.icon}</span>
                     <span className="text-[8px] md:text-[9px] font-bold text-slate-800 dark:text-slate-200 tracking-tighter text-center leading-tight px-1">
@@ -208,21 +272,33 @@ export default function Home({ userName: propUserName }) {
             })}
           </AnimatePresence>
 
-          {/* 正中心 AI 核心 */}
-          <Link to="/airi" className="relative z-20 group">
-            <div className="absolute inset-0 bg-sky-400 dark:bg-sky-500 blur-2xl opacity-30 group-hover:opacity-100 transition-opacity duration-500 rounded-full animate-pulse" />
-            
-            <div className="w-28 h-28 md:w-36 md:h-36 bg-gradient-to-br from-blue-500 to-sky-400 dark:from-sky-500 dark:to-indigo-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(14,165,233,0.4)] border-4 border-white dark:border-slate-900 group-hover:scale-110 transition-transform duration-300">
-              <div className="text-center">
-                <span className="block text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg">AI</span>
-                <span className="block text-[9px] md:text-[11px] text-sky-100 font-mono tracking-widest mt-1">TERMINAL</span>
-              </div>
-            </div>
-            
-            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-slate-500 dark:text-slate-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-              &lt; ENTER_NEURAL_LINK &gt;
-            </div>
-          </Link>
+          {/* 正中心 AI 核心 (逻辑：一触展开，二触跳转) */}
+<div className="relative z-50"> 
+  <Link
+    to="/airi"
+    className="relative block group"
+    onClick={handleAICoreClick} // ✅ 使用我们刚才定义的逻辑
+  >     
+    {/* 核心爆发光晕 */}
+    <div className="absolute inset-0 bg-sky-400 dark:bg-sky-500 blur-2xl opacity-30 group-hover:opacity-100 transition-opacity duration-500 rounded-full animate-pulse" />
+    
+    {/* 核心实体按钮 */}
+    <div className="w-28 h-28 md:w-36 md:h-36 bg-gradient-to-br from-blue-500 to-sky-400 dark:from-sky-500 dark:to-indigo-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(14,165,233,0.4)] border-4 border-white dark:border-slate-900 group-hover:scale-110 active:scale-90 transition-all duration-300">
+      <div className="text-center">
+        <span className="block text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg">AI</span>
+        <span className="block text-[9px] md:text-[11px] text-sky-100 font-mono tracking-widest mt-1">
+          {/* ✅ 动态文字提示 */}
+          {isSphereHovered ? 'ENTER' : 'TERMINAL'}
+        </span>
+      </div>
+    </div>
+    
+    {/* 指引文字 */}
+    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-slate-500 dark:text-slate-400 font-mono opacity-80 md:block">
+      {isSphereHovered ? "< CLICK_AGAIN_TO_ENTER >" : "< TAP_TO_EXPAND >"}
+    </div>
+  </Link>
+</div>
 
         </div>
       </section>

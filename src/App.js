@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -22,7 +23,7 @@ import NewsDetail from './pages/NewsDetail';
 import NewsArchive from './pages/NewsArchive';
 import Admin from './pages/Admin';
 import CampusView from './pages/CampusView';
-import AiriRoom from './pages/AiriRoom'; // ✅ 补上这一行，给 AiriRoom 报个户口
+import AiriRoom from './pages/AiriRoom';
 
 import logo from './logo.jpg';
 
@@ -33,7 +34,7 @@ const PageWrapper = ({ children }) => (
     animate={{ opacity: 1, x: 0 }}
     exit={{ opacity: 0, x: -20 }}
     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-    className="w-full"
+    className="w-full h-full"
   >
     {children}
   </motion.div>
@@ -60,14 +61,12 @@ const AnimatedRoutes = ({ loggedInUserName }) => {
         <Route path="/campus" element={<PageWrapper><CampusView /></PageWrapper>} />
         <Route path="/airi" element={<PageWrapper><AiriRoom /></PageWrapper>} />
         <Route path="*" element={<PageWrapper><Home userName={loggedInUserName} /></PageWrapper>} />
-        <Route path="/" element={<CampusView />} />
-        <Route path="/airi" element={<AiriRoom />} />
-        <Route path="*" element={<PageWrapper><Home loggedInUserName={loggedInUserName} /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );
 };
 
+// 页面滚动置顶逻辑
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -77,7 +76,13 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
+// 主程序
+function AppContent() {
+  const location = useLocation();
+  
+  // ✅ 核心判断：是否处于 AI 沉浸式页面
+  const isAiriPage = location.pathname === '/airi';
+
   const [showPreloader, setShowPreloader] = useState(() => {
     try { return !localStorage.getItem('bgu_user_name'); } catch { return true; }
   });
@@ -94,6 +99,7 @@ function App() {
     AOS.init({ once: true, offset: 10, duration: 500 });
   }, []);
 
+  // 全局触感反馈
   useEffect(() => {
     if (showPreloader) return;
     const handleGlobalClick = (e) => {
@@ -106,7 +112,12 @@ function App() {
 
   const BANNER_H = 32;
   const NAV_H = 64;
-  const topPadding = useMemo(() => (isBroadcastActive ? BANNER_H : 0) + NAV_H, [isBroadcastActive]);
+  
+  // ✅ AI 页面自动取消 Padding Top
+  const topPadding = useMemo(() => {
+    if (isAiriPage) return 0;
+    return (isBroadcastActive ? BANNER_H : 0) + NAV_H;
+  }, [isBroadcastActive, isAiriPage]);
 
   const closeAllMenus = () => {
     setIsNavMenuOpen(false);
@@ -123,18 +134,17 @@ function App() {
   }
 
   return (
-    <Router>
+    <div className={`bg-gray-50 dark:bg-slate-950 min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden ${isAiriPage ? 'h-screen' : ''}`}>
       <ScrollToTop />
-      <div className="bg-gray-50 dark:bg-slate-950 min-h-screen flex flex-col transition-colors duration-500 overflow-x-hidden">
-        
-        {/* --- HEADER --- */}
+      
+      {/* --- HEADER (在 AI 页面自动隐藏) --- */}
+      {!isAiriPage && (
         <header className="fixed top-0 w-full z-[100] flex flex-col transition-all duration-500">
           <BroadcastBanner onActiveChange={setIsBroadcastActive} />
           
           <nav className="h-16 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800/50 flex items-center text-slate-800 dark:text-slate-100 transition-colors">
             <div className="max-w-7xl mx-auto px-4 w-full flex justify-between items-center">
               
-              {/* Style 按钮 */}
               <div className="flex-1 flex justify-start relative">
                 <button
                   onClick={(e) => {
@@ -142,9 +152,9 @@ function App() {
                     setIsThemeMenuOpen(!isThemeMenuOpen);
                     setIsNavMenuOpen(false);
                   }}
-                  className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-slate-700 dark:text-slate-200"
+                  className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
                 >
-                  <span>✨</span> <span className="hidden md:inline">Style</span>
+                  <span>✨</span> <span className="hidden md:inline text-slate-700 dark:text-slate-200">Style</span>
                 </button>
 
                 {isThemeMenuOpen && (
@@ -157,16 +167,14 @@ function App() {
                 )}
               </div>
 
-              {/* Logo */}
               <Link to="/" className="flex-shrink-0 flex flex-col items-center group select-none" onClick={closeAllMenus}>
                 <div className="flex items-center gap-2">
                   <img src={logo} alt="Logo" className="w-7 h-7 object-contain rounded-full shadow-sm" />
-                  <h1 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white transition-colors">BGU</h1>
+                  <h1 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">BGU</h1>
                 </div>
                 <p className="text-[6px] uppercase tracking-[0.3em] opacity-60 font-bold text-slate-500 dark:text-slate-400">Bushigemen</p>
               </Link>
 
-              {/* 菜单按钮 */}
               <div className="flex-1 flex justify-end relative">
                 <button 
                   onClick={(e) => {
@@ -186,9 +194,8 @@ function App() {
                       <NavMenuItem to="/about" icon="📖" label="About Us" onClick={closeAllMenus} />
                       <NavMenuItem to="/alumni" icon="🤝" label="Alumni Wall" onClick={closeAllMenus} />
                       <NavMenuItem to="/campus" icon="🧊" label="3D Campus" onClick={closeAllMenus} />
-                      <NavMenuItem to="/pass" icon="🗂️" label="Student Portal" onClick={closeAllMenus} highlight />
-                      {/* 在 Student Portal 上方加一个 */}
                       <NavMenuItem to="/airi" icon="🤖" label="Airi Terminal" onClick={closeAllMenus} />
+                      <NavMenuItem to="/pass" icon="🗂️" label="Student Portal" onClick={closeAllMenus} highlight />
                     </div>
                   </div>
                 )}
@@ -196,13 +203,19 @@ function App() {
             </div>
           </nav>
         </header>
+      )}
 
-        {/* --- MAIN --- */}
-        <main className="flex-grow overflow-x-hidden relative" style={{ paddingTop: topPadding }} onClick={closeAllMenus}>
-          <AnimatedRoutes loggedInUserName={loggedInUserName} />
-        </main>
+      {/* --- MAIN --- */}
+      <main 
+        className={`flex-grow overflow-x-hidden relative transition-all duration-500 ${isAiriPage ? 'h-full overflow-hidden' : ''}`} 
+        style={{ paddingTop: topPadding }} 
+        onClick={closeAllMenus}
+      >
+        <AnimatedRoutes loggedInUserName={loggedInUserName} />
+      </main>
 
-        {/* --- MOBILE NAV --- */}
+      {/* --- MOBILE NAV (在 AI 页面自动隐藏) --- */}
+      {!isAiriPage && (
         <div className="md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 border-t border-gray-200 dark:border-slate-800/50 backdrop-blur-2xl z-[100] py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] flex justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.1)] transition-colors">
           <BottomNavLink to="/" icon="🏠" label="Home" />
           <BottomNavLink to="/about" icon="📖" label="About" />
@@ -210,15 +223,28 @@ function App() {
           <BottomNavLink to="/alumni" icon="🤝" label="Alumni" />
           <BottomNavLink to="/campus" icon="🗺️" label="Campus" />
         </div>
-      </div>
+      )}
+    </div>
+  );
+}
+
+// 路由包装器
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
 
-// --- 子组件 (已修复暗色文字) ---
+// --- 子组件 ---
 function NavMenuItem({ to, icon, label, onClick, highlight }) {
   return (
-    <Link to={to} onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${highlight ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+    <Link 
+      to={to} 
+      onClick={onClick} 
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold text-sm ${highlight ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+    >
       <span className="text-lg">{icon}</span><span>{label}</span>
     </Link>
   );
@@ -229,7 +255,10 @@ function BottomNavLink({ to, icon, label, isMain }) {
   const isActive = location.pathname === to || (to === '/pass' && ['/pass', '/apply', '/id-card'].includes(location.pathname));
   
   return (
-    <Link to={to} className={isMain ? 'relative -top-5' : `flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400 dark:text-slate-500'}`}>
+    <Link 
+      to={to} 
+      className={isMain ? 'relative -top-5' : `flex flex-col items-center gap-1 p-1 ${isActive ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400 dark:text-slate-500'}`}
+    >
       {isMain ? (
         <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-slate-950 transition-transform active:scale-90 ${isActive ? 'bg-orange-500 text-white' : 'bg-slate-800 dark:bg-slate-700 text-white'}`}>
           {icon}

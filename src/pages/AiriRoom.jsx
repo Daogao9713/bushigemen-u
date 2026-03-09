@@ -140,8 +140,8 @@ const AiriRoom = () => {
       </div>
 
       {/* 🎭 Roxy 展示区 (✅ 应用黄金比例) */}
-      <div className="absolute inset-x-0 top-0 h-[75vh] flex items-center justify-center z-10 pointer-events-none transition-all duration-300"
-           style={{ transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})` }}>
+      <div className="absolute inset-x-0 top-0 h-[70vh] flex items-center justify-center z-10 pointer-events-none overflow-hidden"
+         style={{ transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})`, transformOrigin: 'center center'}}>
         <div className="w-full h-full max-w-4xl">
           <Live2DMascot modelUrl="/live2d/Rory/Roxy_V1.model3.json" />
         </div>
@@ -149,23 +149,34 @@ const AiriRoom = () => {
 
       {/* 💬 对话框 */}
       <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-20">
-        <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 shadow-2xl transition-all ${theme.box}`}>
-          <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl ${theme.name}`}>{speaker}</div>
-          <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4">
-            {displayedText}<span className="inline-block w-1.5 h-5 ml-2 bg-current animate-bounce" />
-          </div>
-          <form onSubmit={handleSend} className={`relative flex items-center pt-4 border-t ${theme.inputLine}`}>
-            <span className={`mr-3 animate-pulse font-black ${theme.icon}`}>▶</span>
-            <input 
-              type="text" 
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="请在这里诉说 TELL ME HERE"
-              className={`bg-transparent w-full outline-none font-mono text-sm tracking-widest ${theme.inputText}`}
-            />
-          </form>
-        </div>
-      </div>
+      
+      <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 pb-20 md:pb-8 shadow-2xl transition-all ${theme.box}`}>
+
+      <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl ${theme.name}`}>
+      {speaker}
+    </div>
+
+    <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4">
+      {displayedText}
+      <span className="inline-block w-1.5 h-5 ml-2 bg-current animate-bounce" />
+    </div>
+
+    <form onSubmit={handleSend} className={`relative flex items-center pt-4 border-t ${theme.inputLine}`}>
+      <span className={`mr-3 animate-pulse font-black ${theme.icon}`}>▶</span>
+
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        placeholder="请在这里诉说 TELL ME HERE"
+        className={`bg-transparent w-full outline-none font-mono text-sm tracking-widest ${theme.inputText}`}
+      />
+
+    </form>
+
+  </div>
+
+</div>
 
       {/* 🛠️ 侧边调律面板 */}
       <div className={`fixed top-1/2 -translate-y-1/2 left-0 z-[110] transition-all duration-500 ${showPanel ? 'translate-x-0' : '-translate-x-[calc(100%-24px)]'}`}>
