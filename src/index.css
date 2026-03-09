@@ -142,6 +142,86 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  /* src/index.css */
+
+@keyframes scanline-fast {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(300px); } /* 这里的 300px 对应你 Mascot 容器高度 */
+}
+
+.animate-scanline-fast {
+  animation: scanline-fast 2s linear infinite;
+}
+
+/* 增加一个简单的 Glitch 效果类，留给以后 AI 思考时调用 */
+.glitch-effect {
+  animation: glitch 0.2s infinite;
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); filter: hue-rotate(90deg); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+/* src/index.css */
+/* 1. 强制全屏无滚动布局引擎 */
+.lock-screen {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* 保持其他页面的自然滚动 */
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  background-color: #f8fafc; /* gray-50 */
+}
+
+/* 2. 魔法阵展开核心动画 */
+@keyframes magic-spark {
+  0% { opacity: 0; transform: scale(0) rotate(-180deg); filter: blur(20px); }
+  50% { opacity: 1; filter: blur(5px); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0px); }
+}
+
+@keyframes magic-drawing {
+  0% { stroke-dashoffset: 1000; opacity: 0; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes magic-glow {
+  0%, 100% { filter: drop-shadow(0 0 10px currentcolor); }
+  50% { filter: drop-shadow(0 0 30px currentcolor); }
+}
+
+/* 进场动画类 */
+.animate-magic-deploy { animation: magic-spark 1.8s ease-out forwards; }
+.animate-magic-deploy-rune { animation: magic-drawing 2s ease-in-out forwards; }
+.animate-magic-glow { animation: magic-glow 2s ease-in-out infinite; }
+
+/* 3. Galgame 对话框滚动区 */
+.galgame-scroll-area {
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* 手机端终端框自动滚动 */
+.terminal-scroll-area {
+  max-height: 250px; /* 手机端限制高度 */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
+}
+
+@media (min-width: 768px) {
+  .terminal-scroll-area {
+    max-height: 400px; /* 电脑端放宽 */
+  }
+}
 }
 
 /* ============================================================

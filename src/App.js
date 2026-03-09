@@ -22,6 +22,7 @@ import NewsDetail from './pages/NewsDetail';
 import NewsArchive from './pages/NewsArchive';
 import Admin from './pages/Admin';
 import CampusView from './pages/CampusView';
+import AiriRoom from './pages/AiriRoom'; // ✅ 补上这一行，给 AiriRoom 报个户口
 
 import logo from './logo.jpg';
 
@@ -57,7 +58,11 @@ const AnimatedRoutes = ({ loggedInUserName }) => {
         <Route path="/news/:id" element={<PageWrapper><NewsDetail /></PageWrapper>} />
         <Route path="/admin" element={<PageWrapper><Admin /></PageWrapper>} />
         <Route path="/campus" element={<PageWrapper><CampusView /></PageWrapper>} />
+        <Route path="/airi" element={<PageWrapper><AiriRoom /></PageWrapper>} />
         <Route path="*" element={<PageWrapper><Home userName={loggedInUserName} /></PageWrapper>} />
+        <Route path="/" element={<CampusView />} />
+        <Route path="/airi" element={<AiriRoom />} />
+        <Route path="*" element={<PageWrapper><Home loggedInUserName={loggedInUserName} /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );
@@ -182,6 +187,8 @@ function App() {
                       <NavMenuItem to="/alumni" icon="🤝" label="Alumni Wall" onClick={closeAllMenus} />
                       <NavMenuItem to="/campus" icon="🧊" label="3D Campus" onClick={closeAllMenus} />
                       <NavMenuItem to="/pass" icon="🗂️" label="Student Portal" onClick={closeAllMenus} highlight />
+                      {/* 在 Student Portal 上方加一个 */}
+                      <NavMenuItem to="/airi" icon="🤖" label="Airi Terminal" onClick={closeAllMenus} />
                     </div>
                   </div>
                 )}
