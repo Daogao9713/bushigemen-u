@@ -8,10 +8,18 @@ import { exportMemory, parseMemoryFile } from '../lib/memory';
 
 // 安全调用手机硬件震动
 const vibrateDevice = (pattern) => {
-  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-    try {
-      navigator.vibrate(pattern);
-    } catch (e) {}
+  if (typeof window === 'undefined') return;
+  
+  // 如果浏览器不支持（比如 iOS），直接静默返回，不报错
+  if (!('vibrate' in navigator)) {
+    return; 
+  }
+  
+  try {
+    navigator.vibrate(pattern);
+  } catch (e) {
+    // 拦截部分安卓机型因为权限问题的报错
+    console.warn("震动被系统拦截");
   }
 };
 
@@ -128,11 +136,11 @@ const AiriRoom = () => {
   // -----------------------------
   // 6) 调律参数（校长黄金参数）
   // -----------------------------
-  const [brightness, setBrightness] = useState(196);
+  const [brightness, setBrightness] = useState(400);
   const [magicScale, setMagicScale] = useState(0.6);
-  const [roxyScale, setRoxyScale] = useState(2.35);
-  const [roxyX, setRoxyX] = useState(119);
-  const [roxyY, setRoxyY] = useState(257);
+  const [roxyScale, setRoxyScale] = useState(1.7);
+  const [roxyX, setRoxyX] = useState(96);
+  const [roxyY, setRoxyY] = useState(119);
   const [spinSpeed, setSpinSpeed] = useState(2.5);
   const [showPanel, setShowPanel] = useState(false);
 

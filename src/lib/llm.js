@@ -3,7 +3,7 @@ import { getMoodStage } from './mood';
 
 // ⚠️ 校长注意：目前为了快速跑通，我们写死在这里。
 // 以后项目上线时，强烈建议把 API_KEY 移到 .env 文件里 (例如 process.env.REACT_APP_API_KEY)
-const API_URL = "[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)"; 
+const API_URL = "https://api.openai.com/v1/chat/completions"; 
 const API_KEY = process.env.REACT_APP_API_KEY || "";
 
 /**
