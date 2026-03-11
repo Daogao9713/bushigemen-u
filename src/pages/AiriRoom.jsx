@@ -1,16 +1,49 @@
 // src/pages/AiriRoom.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Live2DMascot from '../components/Live2DMascot';
+import { useSoulStore } from '../store/useSoulStore';
+import MoodHUD from '../components/MoodHUD';
+import { sendToLLM } from '../lib/llm';
+import { exportMemory, parseMemoryFile } from '../lib/memory';
 
 // 安全调用手机硬件震动
 const vibrateDevice = (pattern) => {
   if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-    try { navigator.vibrate(pattern); } catch (e) {}
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {}
   }
 };
 
 const AiriRoom = () => {
-  // --- 1. 系统模式侦测 ---
+  const containerRef = useRef(null);
+  const mascotRef = useRef(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // -----------------------------
+  // 1) 全局状态 / 灵魂状态 (完整引出)
+  // -----------------------------
+  const mood = useSoulStore((s) => s.mood);
+  const setMood = useSoulStore((s) => s.setMood);
+  const changeMood = useSoulStore((s) => s.changeMood);
+  const loggedInUserName = useSoulStore((s) => s.loggedInUserName); 
+  const messages = useSoulStore((s) => s.messages);
+  const addMessage = useSoulStore((s) => s.addMessage);
+  const memorySummary = useSoulStore((s) => s.memorySummary);
+  const setMemorySummary = useSoulStore((s) => s.setMemorySummary);
+
+  // -----------------------------
+  // 2) 本地 UI 状态
+  // -----------------------------
+  const [speaker, setSpeaker] = useState('SYSTEM');
+  const [message, setMessage] = useState('正在建立 BGU 灵魂链路...');
+  const [displayedText, setDisplayedText] = useState('');
+  const [inputValue, setInputValue] = useState('');
+  const [isDragging, setIsDragging] = useState(false); // 👈 新增：拖拽状态
+
+  // -----------------------------
+  // 3) 系统主题侦测
+  // -----------------------------
   const [isDayMode, setIsDayMode] = useState(() => {
     if (typeof window === 'undefined') return true;
     return !window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -19,21 +52,59 @@ const AiriRoom = () => {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = (e) => setIsDayMode(!e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    } else {
+      mediaQuery.addListener(handler);
+      return () => mediaQuery.removeListener(handler);
+    }
   }, []);
 
-  // --- 2. 核心锁定协议 (防止手机端畸变) ---
+  // -----------------------------
+  // 4) 打字机效果
+  // -----------------------------
   useEffect(() => {
-    // 1. 强制禁止 touchmove 产生的橡皮筋效果
+    let index = 0;
+    setDisplayedText('');
+    if (!message) return;
+    const timer = setInterval(() => {
+      index += 1;
+      setDisplayedText(message.slice(0, index));
+      if (index >= message.length) {
+        clearInterval(timer);
+      }
+    }, 24);
+    return () => clearInterval(timer);
+  }, [message]);
+
+  // -----------------------------
+  // 5) 核心锁定与视觉视口同步协议
+  // -----------------------------
+  useEffect(() => {
+    const initialHeight = window.innerHeight;
+    if (containerRef.current) containerRef.current.style.height = `${initialHeight}px`;
+
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const offset = window.innerHeight - window.visualViewport.height;
+        setKeyboardHeight(offset > 0 ? offset : 0);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener('scroll', handleViewportChange);
+    }
+
     const preventDefault = (e) => {
-      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      const tag = e.target.tagName;
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
         if (e.cancelable) e.preventDefault();
       }
     };
-    document.addEventListener('touchmove', preventDefault, { passive: false });
 
-    // 2. 页面载入时锁定 body 样式
+    document.addEventListener('touchmove', preventDefault, { passive: false });
     document.body.style.position = 'fixed';
     document.body.style.overflow = 'hidden';
     document.body.style.width = '100%';
@@ -41,6 +112,10 @@ const AiriRoom = () => {
     document.body.style.overscrollBehavior = 'none';
 
     return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
       document.removeEventListener('touchmove', preventDefault);
       document.body.style.position = '';
       document.body.style.overflow = '';
@@ -50,80 +125,187 @@ const AiriRoom = () => {
     };
   }, []);
 
-  // --- 3. 调律参数 (校长黄金参数) ---
-  const [brightness, setBrightness] = useState(196);      
-  const [magicScale, setMagicScale] = useState(0.6);      
-  const [roxyScale, setRoxyScale] = useState(2.35);       
-  const [roxyX, setRoxyX] = useState(119);                
-  const [roxyY, setRoxyY] = useState(257);                
-  const [spinSpeed, setSpinSpeed] = useState(2.5);        
+  // -----------------------------
+  // 6) 调律参数（校长黄金参数）
+  // -----------------------------
+  const [brightness, setBrightness] = useState(196);
+  const [magicScale, setMagicScale] = useState(0.6);
+  const [roxyScale, setRoxyScale] = useState(2.35);
+  const [roxyX, setRoxyX] = useState(119);
+  const [roxyY, setRoxyY] = useState(257);
+  const [spinSpeed, setSpinSpeed] = useState(2.5);
   const [showPanel, setShowPanel] = useState(false);
-  
-  // --- 4. 仪式感三阶段加载 ---
+
+  // -----------------------------
+  // 7) 仪式感加载系统
+  // -----------------------------
   const [isLoading, setIsLoading] = useState(true);
   const [loadStage, setLoadStage] = useState('INIT');
+  const loadTimers = useRef([]);
 
   useEffect(() => {
     vibrateDevice(50);
-    const t1 = setTimeout(() => { setLoadStage('SCAN'); vibrateDevice([100, 50, 100]); }, 1500);
-    const t2 = setTimeout(() => { setLoadStage('DEPLOY'); vibrateDevice(400); }, 3000);
-    const t3 = setTimeout(() => setIsLoading(false), 4500); 
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    loadTimers.current.push(setTimeout(() => { setLoadStage('SCAN'); vibrateDevice([100, 50, 100]); }, 1500));
+    loadTimers.current.push(setTimeout(() => { setLoadStage('DEPLOY'); vibrateDevice(400); }, 3000));
+    loadTimers.current.push(setTimeout(() => { setIsLoading(false); }, 4500));
+
+    return () => loadTimers.current.forEach(clearTimeout);
   }, []);
 
-  // --- 5. 对话系统 ---
-  const [speaker, setSpeaker] = useState('ROXY');
-  const [message, setMessage] = useState('吾在此处感受汝之内心，来诉说吧');
-  const [displayedText, setDisplayedText] = useState('');
-  const [inputValue, setInputValue] = useState('');
+  // -----------------------------
+  // 8) 拖拽导入记忆系统 (核心新增)
+  // -----------------------------
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const data = parseMemoryFile(event.target.result);
+      if (data) {
+        // 清除原本的加载动画定时器
+        loadTimers.current.forEach(clearTimeout);
+        // 注入旧记忆
+        setMood(data.mood);
+        setMemorySummary(data.summary);
+        vibrateDevice([50, 100, 50]);
+        // 直接降临
+        setIsLoading(false);
+        setSpeaker('ROXY');
+        setMessage(`记忆链接已恢复。欢迎回来，${data.userName}。`);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
-    if (isLoading) return;
-    let i = 0; setDisplayedText('');
-    const timer = setInterval(() => {
-      if (i < message.length) { setDisplayedText(prev => prev + message.charAt(i)); i++; }
-      else clearInterval(timer);
-    }, 40);
-    return () => clearInterval(timer);
-  }, [message, isLoading]);
+    if (isLoading || memorySummary) return; // 如果已经读了记忆就不播默认语
+    const t = setTimeout(() => {
+      setSpeaker('ROXY');
+      setMessage('链路稳定。校长，这里是 Airi Room...我已经在等你了。');
+      vibrateDevice(20);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [isLoading, memorySummary]);
 
-  const handleSend = (e) => {
+  // -----------------------------
+  // 9) 对话发送闭环
+  // -----------------------------
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    const userText = inputValue.trim();
+    if (!userText) return;
+
     vibrateDevice(30);
     setSpeaker('CHANCELLOR');
-    setMessage(inputValue);
+    setMessage(userText);
     setInputValue('');
-    setTimeout(() => {
+    
+    // 👈 记录校长的话
+    addMessage({ role: 'user', content: userText }); 
+
+    try {
+      const aiResponse = await sendToLLM({
+        message: userText,
+        messagesHistory: messages, // 👈 ✅ 必须加上这一行，把全局的聊天记录传给大脑
+        currentMood: mood,
+        memorySummary: memorySummary // 把继承的记忆传给AI
+      });
+
+      const moodDelta = Number(aiResponse?.mood_change ?? 0);
+      changeMood(moodDelta);
+
       setSpeaker('ROXY');
-      setMessage('指令已确认。正在调用 BGU 底层权限，正在执行重构操作。');
-    }, 1800);
+      setMessage(aiResponse?.reply || '...我在听。');
+      vibrateDevice([30, 50]);
+      
+      // 👈 记录 Roxy 的话
+      addMessage({ role: 'assistant', content: aiResponse?.reply || '...' }); 
+
+      if (mascotRef.current) {
+        if (aiResponse?.motion) mascotRef.current.playMotion(aiResponse.motion);
+        if (aiResponse?.expression) mascotRef.current.setExpression(aiResponse.expression);
+      }
+    } catch (error) {
+      console.error('AI 链路异常', error);
+      setSpeaker('SYSTEM');
+      setMessage('[ERR] MAGI 链路连接超时，请重试。');
+    }
+  };
+  
+  // -----------------------------
+  // 10) 离场协议
+  // -----------------------------
+  const handleExit = () => {
+    vibrateDevice(100);
+    exportMemory(loggedInUserName, mood, messages);
+    window.location.href = "/";
   };
 
-  const theme = isDayMode ? {
-    bg: 'from-white via-sky-50 to-blue-100',
-    magicColor: 'border-sky-400',
-    magicGlow: 'shadow-[0_0_30px_rgba(56,189,248,0.5)]',
-    box: 'bg-white/85 border-sky-300 shadow-sky-200/50',
-    name: 'bg-sky-500 text-white',
-    inputLine: 'border-sky-400/20',
-    inputText: 'text-sky-900 placeholder:text-sky-500/50',
-    icon: 'text-sky-500'
-  } : {
-    bg: 'from-indigo-950 via-slate-950 to-black',
-    magicColor: 'border-purple-500',
-    magicGlow: 'shadow-[0_0_30px_rgba(168,85,247,0.5)]',
-    box: 'bg-slate-900/90 border-purple-500 text-purple-100 shadow-purple-900/50',
-    name: 'bg-purple-600 text-white',
-    inputLine: 'border-purple-500/50',
-    inputText: 'text-purple-50 placeholder:text-purple-400/60',
-    icon: 'text-purple-400'
-  };
+  // -----------------------------
+  // 11) 灵魂唤醒：监听主动发言 + 随机 idle
+  // -----------------------------
+  useEffect(() => {
+    if (isLoading) return;
+    const handleRoxySpeech = (e) => {
+      setSpeaker('ROXY');
+      setMessage(e.detail || '......');
+      vibrateDevice(20);
+    };
+    window.addEventListener('roxy_speech', handleRoxySpeech);
+
+    const idleTimer = setInterval(() => {
+      const randomSpeechPool = [
+        '校长，你在看什么呢？',
+        'BGU 今天的风儿略显嘈杂...',
+        '总觉得，有种被注视的感觉...',
+        '是在发呆吗？',
+        '这种静谧的感觉，并不讨厌。',
+      ];
+      const randomSpeech = randomSpeechPool[Math.floor(Math.random() * randomSpeechPool.length)];
+      window.dispatchEvent(new CustomEvent('roxy_random_idle'));
+      setSpeaker('ROXY');
+      setMessage(randomSpeech);
+    }, 25000);
+
+    return () => {
+      window.removeEventListener('roxy_speech', handleRoxySpeech);
+      clearInterval(idleTimer);
+    };
+  }, [isLoading]);
+
+  // -----------------------------
+  // 12) 主题配置
+  // -----------------------------
+  const theme = isDayMode
+    ? {
+        bg: 'from-white via-sky-50 to-blue-100',
+        magicColor: 'border-sky-400',
+        magicGlow: 'shadow-[0_0_30px_rgba(56,189,248,0.5)]',
+        box: 'bg-white/85 border-sky-300 shadow-sky-200/50',
+        name: 'bg-sky-500 text-white',
+        inputLine: 'border-sky-400/20',
+        inputText: 'text-sky-900 placeholder:text-sky-500/50',
+        icon: 'text-sky-500',
+      }
+    : {
+        bg: 'from-indigo-950 via-slate-950 to-black',
+        magicColor: 'border-purple-500',
+        magicGlow: 'shadow-[0_0_30px_rgba(168,85,247,0.5)]',
+        box: 'bg-slate-900/90 border-purple-500 text-purple-100 shadow-purple-900/50',
+        name: 'bg-purple-600 text-white',
+        inputLine: 'border-purple-500/50',
+        inputText: 'text-purple-50 placeholder:text-purple-400/60',
+        icon: 'text-purple-400',
+      };
 
   return (
-    // ✅ fixed inset-0 配合 touch-none 彻底杜绝滑动畸变
-    <div className={`fixed inset-0 h-[100dvh] w-screen overflow-hidden transition-all duration-1000 bg-gradient-to-br ${theme.bg} touch-none`}>
-      
+    <div
+      ref={containerRef}
+      className={`fixed inset-0 w-screen overflow-hidden transition-all duration-1000 bg-gradient-to-br ${theme.bg} touch-none`}
+    >
       <style>{`
         @keyframes bgu-spin-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes bgu-spin-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
@@ -131,64 +313,114 @@ const AiriRoom = () => {
         .spin-ccw { animation: bgu-spin-ccw linear infinite; }
       `}</style>
 
-      {/* 🔮 加载层 */}
+      {/* 左上角灵魂 HUD */}
+      {!isLoading && <MoodHUD />}
+
+      {/* 离场保存按钮 */}
+      {!isLoading && (
+        <button 
+          onClick={handleExit}
+          className="fixed top-6 right-6 z-50 px-4 py-2 border border-red-500/30 bg-red-950/20 text-red-400 font-mono text-xs rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg backdrop-blur-md pointer-events-auto active:scale-95"
+        >
+          [ END_ENCOUNTER ]
+        </button>
+      )}
+
+      {/* 🔮 加载层 (现已支持记忆拖入) */}
       {isLoading && (
-        <div className="absolute inset-0 z-[1000] bg-slate-950 flex flex-col items-center justify-center">
-          <div className="relative w-64 h-64 flex items-center justify-center">
+        <div 
+          className={`absolute inset-0 z-[1000] flex flex-col items-center justify-center transition-colors duration-300 ${isDragging ? 'bg-sky-950' : 'bg-slate-950'}`}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleFileDrop}
+        >
+          <div className="relative w-64 h-64 flex items-center justify-center pointer-events-none">
             <div className={`absolute w-6 h-6 rounded-full bg-current ${theme.icon} animate-ping ${theme.magicGlow}`} />
             <div className={`absolute w-2 h-2 rounded-full bg-current ${theme.icon}`} />
-            {loadStage !== 'INIT' && (
+
+            {/* 如果正在拖拽，显示吸入动画 */}
+            {isDragging && (
+              <div className="absolute inset-0 border-4 border-dashed border-sky-400 animate-pulse rounded-full" />
+            )}
+
+            {loadStage !== 'INIT' && !isDragging && (
               <>
                 <div className={`absolute w-40 h-40 border-4 border-dashed ${theme.magicColor} rounded-full spin-cw`} style={{ animationDuration: '3s' }} />
                 <div className={`absolute w-56 h-56 border-y-4 border-transparent border-x-4 ${theme.magicColor} opacity-50 rounded-full spin-ccw`} style={{ animationDuration: '1.5s' }} />
               </>
             )}
-            {loadStage === 'DEPLOY' && <div className={`absolute w-full h-full border-8 ${theme.magicColor} rounded-full animate-ping opacity-0`} style={{ animationDuration: '1.5s' }} />}
+
+            {loadStage === 'DEPLOY' && !isDragging && (
+              <div className={`absolute w-full h-full border-8 ${theme.magicColor} rounded-full animate-ping opacity-0`} style={{ animationDuration: '1.5s' }} />
+            )}
           </div>
-          <div className="mt-16 flex flex-col items-center gap-3">
-            <p className={`font-mono text-[10px] ${theme.icon} tracking-[0.5em] font-black`}>
-              {loadStage === 'INIT' ? 'CORE_IGNITION...' : loadStage === 'SCAN' ? 'SCANNING_ENVIRONMENT...' : 'MAGIC_LINK_DEPLOYED!'}
+
+          <div className="mt-16 flex flex-col items-center gap-3 pointer-events-none">
+            <p className={`font-mono text-[10px] ${isDragging ? 'text-sky-400' : theme.icon} tracking-[0.5em] font-black`}>
+              {isDragging 
+                ? 'DETECTING_MEMORY_CRYSTAL...' 
+                : loadStage === 'INIT' ? 'CORE_IGNITION...' : loadStage === 'SCAN' ? 'SCANNING_ENVIRONMENT...' : 'MAGIC_LINK_DEPLOYED!'}
             </p>
+
             <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                <div className={`h-full bg-current ${theme.icon} transition-all ease-out`} style={{ width: loadStage === 'INIT' ? '15%' : loadStage === 'SCAN' ? '60%' : '100%', transitionDuration: '1.5s' }} />
+              <div
+                className={`h-full bg-current ${isDragging ? 'bg-sky-400 w-full animate-pulse' : theme.icon} transition-all ease-out`}
+                style={{
+                  width: isDragging ? '100%' : loadStage === 'INIT' ? '15%' : loadStage === 'SCAN' ? '60%' : '100%',
+                  transitionDuration: '1.5s',
+                }}
+              />
             </div>
+
+            <p className="mt-4 text-[9px] text-slate-500 font-mono">
+              [ 若持有旧日记忆结晶，请投入此阵法 ]
+            </p>
           </div>
         </div>
       )}
 
       {/* 🔮 魔法阵背景 */}
-      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none transition-transform duration-700"
-           style={{ transform: `scale(${magicScale})`, filter: `brightness(${brightness}%)` }}>
+      <div
+        className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none transition-transform duration-700"
+        style={{ transform: `scale(${magicScale})`, filter: `brightness(${brightness}%)` }}
+      >
         <div className="relative w-full h-full flex items-center justify-center opacity-40">
-            <div className={`absolute w-[900px] h-[900px] border-[2px] border-dashed ${theme.magicColor} spin-cw`} style={{ animationDuration: `${40/spinSpeed}s` }} />
-            <div className={`absolute w-[700px] h-[700px] border-2 ${theme.magicColor} spin-ccw`} style={{ animationDuration: `${25/spinSpeed}s` }} />
-            <div className={`absolute w-[450px] h-[450px] border-[4px] ${theme.magicColor} animate-pulse ${theme.magicGlow}`} />
-            <div className={`absolute w-[350px] h-[350px] ${isDayMode ? 'bg-sky-400' : 'bg-purple-600'} blur-[120px] rounded-full opacity-20`} />
+          <div className={`absolute w-[900px] h-[900px] border-[2px] border-dashed ${theme.magicColor} spin-cw`} style={{ animationDuration: `${40 / spinSpeed}s` }} />
+          <div className={`absolute w-[700px] h-[700px] border-2 ${theme.magicColor} spin-ccw`} style={{ animationDuration: `${25 / spinSpeed}s` }} />
+          <div className={`absolute w-[450px] h-[450px] border-[4px] ${theme.magicColor} animate-pulse ${theme.magicGlow}`} />
+          <div className={`absolute w-[350px] h-[350px] ${isDayMode ? 'bg-sky-400' : 'bg-purple-600'} blur-[120px] rounded-full opacity-20`} />
         </div>
       </div>
 
-      {/* 🎭 Roxy 展示区 - 修正为 h-full 防止位移截断 */}
-      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none overflow-hidden"
-           style={{ transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})`, transformOrigin: 'center center'}}>
-        <div className="w-full h-full max-w-4xl">
-          <Live2DMascot modelUrl="/live2d/Rory/Roxy_V1.model3.json" />
+      {/* 🎭 Roxy 展示区 */}
+      <div
+        className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none overflow-hidden"
+        style={{ transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})`, transformOrigin: 'center center' }}
+      >
+        <div className="w-full h-full max-w-4xl pointer-events-none">
+          <Live2DMascot ref={mascotRef} modelUrl="/live2d/Rory/Roxy_V1.model3.json" />
         </div>
       </div>
 
       {/* 💬 对话框 */}
-      <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-20">
-        <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 pb-20 md:pb-8 shadow-2xl transition-all ${theme.box}`}>
+      <div
+        className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-20 transition-transform duration-300 ease-out"
+        style={{ transform: `translate(-50%, -${keyboardHeight}px)` }}
+      >
+        <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 shadow-2xl ${theme.box}`}>
           <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl ${theme.name}`}>
             {speaker}
           </div>
-          <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4">
+
+          <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4 whitespace-pre-wrap">
             {displayedText}
-            <span className="inline-block w-1.5 h-5 ml-2 bg-current animate-bounce" />
+            <span className="inline-block w-1.5 h-5 ml-2 bg-current animate-pulse" />
           </div>
+
           <form onSubmit={handleSend} className={`relative flex items-center pt-4 border-t ${theme.inputLine}`}>
             <span className={`mr-3 animate-pulse font-black ${theme.icon}`}>▶</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="请在这里诉说 TELL ME HERE"
@@ -209,8 +441,9 @@ const AiriRoom = () => {
             <ControlSlider label="MAGIC_SIZE" val={magicScale} set={setMagicScale} min={0.2} max={1.5} step={0.01} isDay={isDayMode} />
             <ControlSlider label="BRIGHTNESS" val={brightness} set={setBrightness} min={50} max={250} isDay={isDayMode} />
             <ControlSlider label="SPIN_RATE" val={spinSpeed} set={setSpinSpeed} min={0.1} max={8} step={0.1} isDay={isDayMode} />
+
             <div className="mt-8 pt-4 border-t border-current/10 flex items-center justify-between text-[10px] font-bold">
-              <button onClick={() => {setRoxyScale(2.35); setRoxyX(119); setRoxyY(257); setMagicScale(0.6); setBrightness(196); setSpinSpeed(2.5);}} className="opacity-40 hover:opacity-100 transition-opacity">RESET_CHANCELLOR</button>
+              <button onClick={() => { setRoxyScale(2.35); setRoxyX(119); setRoxyY(257); setMagicScale(0.6); setBrightness(196); setSpinSpeed(2.5); }} className="opacity-40 hover:opacity-100 transition-opacity">RESET_CHANCELLOR</button>
               <button onClick={() => setIsDayMode(!isDayMode)} className={`w-10 h-5 rounded-full relative transition-colors ${isDayMode ? 'bg-slate-300' : 'bg-purple-600'}`}>
                 <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isDayMode ? 'left-1' : 'left-6'}`} />
               </button>
@@ -222,11 +455,8 @@ const AiriRoom = () => {
         </div>
       </div>
 
-      <div className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-50 ${
-        isDayMode 
-        ? 'bg-[radial-gradient(circle_at_center,transparent_40%,rgba(255,255,255,0.3)_100%)]' 
-        : 'bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]'
-      }`} />
+      {/* 暗角 / 聚焦层 */}
+      <div className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-50 ${isDayMode ? 'bg-[radial-gradient(circle_at_center,transparent_40%,rgba(255,255,255,0.3)_100%)]' : 'bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]'}`} />
     </div>
   );
 };
@@ -236,8 +466,7 @@ const ControlSlider = ({ label, val, set, min, max, step = 1, isDay }) => (
     <div className={`flex justify-between text-[9px] mb-1 font-mono font-bold ${isDay ? 'text-sky-900' : 'text-purple-100'}`}>
       <span>{label}</span><span>{val}</span>
     </div>
-    <input type="range" min={min} max={max} step={step} value={val} onChange={(e) => set(parseFloat(e.target.value))}
-           className={`w-full h-1 appearance-none rounded-full cursor-pointer ${isDay ? 'bg-sky-200 accent-sky-500' : 'bg-slate-800 accent-purple-500'}`} />
+    <input type="range" min={min} max={max} step={step} value={val} onChange={(e) => set(parseFloat(e.target.value))} className={`w-full h-1 appearance-none rounded-full cursor-pointer ${isDay ? 'bg-sky-200 accent-sky-500' : 'bg-slate-800 accent-purple-500'}`} />
   </div>
 );
 
