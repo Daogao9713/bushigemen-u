@@ -27,6 +27,7 @@ const AiriRoom = () => {
   const containerRef = useRef(null);
   const mascotRef = useRef(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [showHistory, setShowHistory] = useState(false); // 控制历史记录面板的显示
 
   // -----------------------------
   // 1) 全局状态 / 灵魂状态 (完整引出)
@@ -201,8 +202,12 @@ const AiriRoom = () => {
   // -----------------------------
   // 9) 对话发送闭环
   // -----------------------------
+  // 在组件顶部增加一个 Ref
+  const lastInteractionTime = useRef(Date.now());
+
   const handleSend = async (e) => {
     e.preventDefault();
+    lastInteractionTime.current = Date.now(); // 👈 只要发送，就重置发呆计时
     const userText = inputValue.trim();
     if (!userText) return;
 
@@ -255,9 +260,12 @@ const AiriRoom = () => {
   // -----------------------------
   // 11) 灵魂唤醒：监听主动发言 + 随机 idle
   // -----------------------------
+ // --- 11) 灵魂唤醒：智能避让版 ---
   useEffect(() => {
     if (isLoading) return;
+
     const handleRoxySpeech = (e) => {
+      lastInteractionTime.current = Date.now(); // 被摸头也算互动，重置计时
       setSpeaker('ROXY');
       setMessage(e.detail || '......');
       vibrateDevice(20);
@@ -265,6 +273,10 @@ const AiriRoom = () => {
     window.addEventListener('roxy_speech', handleRoxySpeech);
 
     const idleTimer = setInterval(() => {
+      // ✅ 关键判断：如果距离上次说话还没超过 30 秒，就跳过这次发呆
+      const silenceDuration = Date.now() - lastInteractionTime.current;
+      if (silenceDuration < 30000) return; 
+
       const randomSpeechPool = [
         '校长，你在看什么呢？',
         'BGU 今天的风儿略显嘈杂...',
@@ -273,10 +285,11 @@ const AiriRoom = () => {
         '这种静谧的感觉，并不讨厌。',
       ];
       const randomSpeech = randomSpeechPool[Math.floor(Math.random() * randomSpeechPool.length)];
+      
       window.dispatchEvent(new CustomEvent('roxy_random_idle'));
       setSpeaker('ROXY');
       setMessage(randomSpeech);
-    }, 25000);
+    }, 25000); // 检查频率不变，但增加了准入条件
 
     return () => {
       window.removeEventListener('roxy_speech', handleRoxySpeech);
@@ -319,10 +332,55 @@ const AiriRoom = () => {
         @keyframes bgu-spin-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
         .spin-cw { animation: bgu-spin-cw linear infinite; }
         .spin-ccw { animation: bgu-spin-ccw linear infinite; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
       `}</style>
 
-      {/* 左上角灵魂 HUD */}
+      {/* 1. 左上角灵魂 HUD */}
       {!isLoading && <MoodHUD />}
+
+      {/* 2. 透明历史记录菜单层 (最顶层) */}
+      {showHistory && (
+        <div 
+          className="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-xl p-6 md:p-12 flex flex-col animate-in fade-in duration-300"
+          onClick={() => setShowHistory(false)} 
+        >
+          <div className="flex justify-between items-center border-b border-sky-500/30 pb-6 mb-8">
+            <div className="flex flex-col" onClick={e => e.stopPropagation()}>
+              <span className="font-mono text-sky-400 text-xs tracking-[0.3em]">SYSTEM_ENCOUNTER_LOGS</span>
+              <span className="text-slate-500 text-[9px] mt-1">BGU_NEURAL_LINK_HISTORY // V1.0</span>
+            </div>
+            <button className="text-sky-400 font-mono text-xs hover:text-white transition-colors">
+              [ CLOSE_ESC ]
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-8 pr-4 custom-scrollbar" onClick={e => e.stopPropagation()}>
+            {messages.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-slate-600 font-mono text-xs italic">
+                - NO_RECORD_FOUND -
+              </div>
+            ) : (
+              messages.map((msg, idx) => (
+                <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className="flex items-baseline gap-3 mb-2 opacity-50 font-mono text-[9px]">
+                    <span className="text-sky-500">{msg.role === 'user' ? loggedInUserName : 'ROXY'}</span>
+                    <span className="text-slate-600">#{idx.toString().padStart(3, '0')}</span>
+                  </div>
+                  <div className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user' 
+                      ? 'bg-sky-500/10 text-sky-100 border border-sky-500/20 rounded-tr-none' 
+                      : 'bg-slate-800/40 text-slate-100 border border-slate-700/50 rounded-tl-none'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 离场保存按钮 */}
       {!isLoading && (
@@ -416,9 +474,18 @@ const AiriRoom = () => {
         style={{ transform: `translate(-50%, -${keyboardHeight}px)` }}
       >
         <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 shadow-2xl ${theme.box}`}>
-          <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl ${theme.name}`}>
+          {/* 修改这里的名字标签：加入 LOG 按钮 */}
+          <div className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl flex items-center gap-4 ${theme.name}`}>
             {speaker}
-          </div>
+          
+          {/* 👈 新增：点击开启历史记录 */}
+      <button 
+        onClick={() => setShowHistory(true)}
+        className="opacity-50 hover:opacity-100 transition-opacity text-[10px] border border-white/40 px-1.5 py-0.5 rounded font-mono"
+      >
+        LOG
+      </button>
+    </div>
 
           <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4 whitespace-pre-wrap">
             {displayedText}
