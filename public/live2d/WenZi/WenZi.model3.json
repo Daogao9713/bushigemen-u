@@ -1,0 +1,43 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "WenZi.moc3",
+		"Textures": [
+			"WenZi.4096/texture_00.png",
+			"WenZi.4096/texture_01.png",
+			"WenZi.4096/texture_02.png",
+			"WenZi.4096/texture_03.png",
+			"WenZi.4096/texture_04.png",
+			"WenZi.4096/texture_05.png"
+		],
+		"Physics": "WenZi.physics3.json",
+		"DisplayInfo": "WenZi.cdi3.json",
+		"Expressions": [
+		{ "Name": "Neutral", "File": "Expressions/Init_Clean.exp3.json" },  
+        { "Name": "Smile", "File": "Expressions/Smile.exp3.json" },
+        { "Name": "LoveEyes", "File": "Expressions/LoveEyes.exp3.json" },
+        { "Name": "Crying", "File": "Expressions/Crying.exp3.json" },
+        { "Name": "PropMic", "File": "Expressions/PropMic.exp3.json" },
+        { "Name": "PropGamepad", "File": "Expressions/PropGamepad.exp3.json" },
+        { "Name": "OutfitCoat", "File": "Expressions/OutfitCoat.exp3.json" },
+        { "Name": "PropEarSpoon", "File": "Expressions/PropEarSpoon.exp3.json" }
+		],
+		"Motions": {
+			"Idle": [
+				{ "File": "Motions/Idle.motion3.json" }
+			]
+		}
+	},
+	"Groups": [
+    {
+        "Target": "Parameter",
+        "Name": "EyeBlink",
+        "Ids": ["ParamEyeLOpen", "ParamEyeROpen"]
+    },
+    {
+        "Target": "Parameter",
+        "Name": "HideItems",
+        "Ids": ["Param7", "expression24"] 
+    }
+]
+}

@@ -1,0 +1,35 @@
+{
+    "Type": "Live2D Expression",
+    "Parameters": [
+        {
+            "Id": "expression9",
+            "Value": 0.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "expression12",
+            "Value": 1.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "expression10",
+            "Value": 0.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "expression14",
+            "Value": 0.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "expression15",
+            "Value": 0.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "expression13",
+            "Value": 1.0,
+            "Blend": "Add"
+        }
+    ]
+}

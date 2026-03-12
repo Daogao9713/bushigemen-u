@@ -1,11 +1,14 @@
-// 因为没有动作文件，Motion 全部限制为 Idle
-export const ALLOWED_MOTIONS = ['Idle'];
+// src/lib/live2dCommands.js
 
-// 表情使用我们刚刚手搓的两个，加上默认的 Neutral
-export const ALLOWED_EXPRESSIONS = ['Neutral', 'Smile', 'Blush'];
+export const ALLOWED_MOTIONS = ['Idle']; // 暂时只有一个通用动作
+
+export const ALLOWED_EXPRESSIONS = [
+  'Neutral', 'LoveEyes', 'Crying', 'Breath', 'DotsEyes', 'Tongue', 'Blank',
+  'PropMic', 'PropGamepad', 'OutfitCoat', 'PropEarSpoon' // ✅ 加入新道具
+];
 
 export function sanitizeMotion(name) {
-  return 'Idle'; // 强制写死，目前只能 Idle
+  return 'Idle';
 }
 
 export function sanitizeExpression(name) {
