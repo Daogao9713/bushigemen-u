@@ -104,26 +104,26 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
     return modelRef.current?.internalModel?.coreModel || null;
   }, []);
 
-  const setCoreParam = useCallback((paramId, value, weight = 1) => {
-    const coreModel = getCoreModel();
-    if (!coreModel || !paramId) return false;
+const setCoreParam = useCallback((paramId, value, weight = 1) => {
+  const coreModel = getCoreModel();
+  if (!coreModel || !paramId) return false;
 
-    try {
-      if (typeof coreModel.addParameterValueById === 'function') {
-        coreModel.addParameterValueById(paramId, value, weight);
-        return true;
-      }
-
-      if (typeof coreModel.setParameterValueById === 'function') {
-        coreModel.setParameterValueById(paramId, value, weight);
-        return true;
-      }
-    } catch (err) {
-      console.warn('[BGU] 参数注入失败:', paramId, err);
+  try {
+    if (typeof coreModel.setParameterValueById === 'function') {
+      coreModel.setParameterValueById(paramId, value);
+      return true;
     }
 
-    return false;
-  }, [getCoreModel]);
+    if (typeof coreModel.addParameterValueById === 'function') {
+      coreModel.addParameterValueById(paramId, value, weight);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[BGU] 参数注入失败:', paramId, err);
+  }
+
+  return false;
+}, [getCoreModel]);
 
   // -----------------------------
   // 物理反馈
@@ -205,49 +205,43 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
   // -----------------------------
   // 唇形同步
   // -----------------------------
-  const stopLipSync = useCallback(() => {
-    if (lipSyncRafRef.current) {
-      cancelAnimationFrame(lipSyncRafRef.current);
-      lipSyncRafRef.current = null;
-    }
+const stopLipSync = useCallback(() => {
+  if (lipSyncRafRef.current) {
+    cancelAnimationFrame(lipSyncRafRef.current);
+    lipSyncRafRef.current = null;
+  }
 
-    if (lipCleanupRef.current) {
-      try {
-        lipCleanupRef.current();
-      } catch (err) {
-        console.warn('[BGU] lip cleanup 释放失败', err);
-      }
-      lipCleanupRef.current = null;
-    }
-
+  if (lipCleanupRef.current) {
     try {
-      if (mediaSourceRef.current) {
-        mediaSourceRef.current.disconnect();
-      }
+      lipCleanupRef.current();
     } catch (_) {}
+    lipCleanupRef.current = null;
+  }
 
+  try {
+    if (mediaSourceRef.current) mediaSourceRef.current.disconnect();
+  } catch (_) {}
+
+  try {
+    if (analyserRef.current) analyserRef.current.disconnect();
+  } catch (_) {}
+
+  mediaSourceRef.current = null;
+  analyserRef.current = null;
+
+  if (audioContextRef.current) {
+    const ctx = audioContextRef.current;
+    audioContextRef.current = null;
     try {
-      if (analyserRef.current) {
-        analyserRef.current.disconnect();
-      }
+      if (ctx.state !== 'closed') ctx.close();
     } catch (_) {}
+  }
 
-    mediaSourceRef.current = null;
-    analyserRef.current = null;
-
-    if (audioContextRef.current) {
-      const ctx = audioContextRef.current;
-      audioContextRef.current = null;
-
-      try {
-        if (ctx.state !== 'closed') {
-          ctx.close();
-        }
-      } catch (_) {}
-    }
-
+  setCoreParam('ParamMouthOpenY', 0, 1);
+  requestAnimationFrame(() => {
     setCoreParam('ParamMouthOpenY', 0, 1);
-  }, [setCoreParam]);
+  });
+}, [setCoreParam]);
 
   const syncLipWithAudio = useCallback(
     async (audioElement) => {
@@ -307,35 +301,37 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
         audioElement.addEventListener('pause', onPause);
         audioElement.addEventListener('emptied', onEnded);
 
-        const update = () => {
-          if (
-            destroyedRef.current ||
-            !audioElement ||
-            audioElement.paused ||
-            audioElement.ended
-          ) {
-            setCoreParam('ParamMouthOpenY', 0, 1);
-            lipSyncRafRef.current = null;
-            return;
-          }
+const update = () => {
+  if (destroyedRef.current || !audioElement) {
+    setCoreParam('ParamMouthOpenY', 0, 1);
+    lipSyncRafRef.current = null;
+    return;
+  }
 
-          analyser.getByteFrequencyData(dataArray);
+  if (audioElement.paused || audioElement.ended) {
+    setCoreParam('ParamMouthOpenY', 0, 1);
+    lipSyncRafRef.current = null;
+    return;
+  }
 
-          // 取低频前几项平均值，做成更平滑的嘴巴张合度
-          const sampleCount = Math.max(1, Math.min(4, dataArray.length));
-          let sum = 0;
-          for (let i = 0; i < sampleCount; i += 1) {
-            sum += dataArray[i];
-          }
+  analyser.getByteFrequencyData(dataArray);
 
-          const avg = sum / sampleCount;
-          const volume = avg / 255;
-          const mouthValue = Math.min(1, volume * 1.5);
+  const sampleCount = Math.max(1, Math.min(4, dataArray.length));
+  let sum = 0;
+  for (let i = 0; i < sampleCount; i += 1) {
+    sum += dataArray[i];
+  }
 
-          setCoreParam('ParamMouthOpenY', mouthValue, 1);
+  const avg = sum / sampleCount;
+  const volume = avg / 255;
 
-          lipSyncRafRef.current = requestAnimationFrame(update);
-        };
+  // 加一点下限钳制，避免偶发高值残留
+  const mouthValue = Math.max(0, Math.min(1, volume * 1.5));
+
+  setCoreParam('ParamMouthOpenY', mouthValue, 1);
+
+  lipSyncRafRef.current = requestAnimationFrame(update);
+};
 
         lipSyncRafRef.current = requestAnimationFrame(update);
         return true;
@@ -371,6 +367,37 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
           console.warn('[BGU] expression 切换失败:', expressionName, err);
         }
       },
+
+resetFace: async () => {
+  try {
+    setCoreParam('ParamMouthOpenY', 0, 1);
+    if (modelRef.current?.expression) {
+      await modelRef.current.expression('Init_Clean');
+    }
+  } catch (err) {
+    console.warn('[BGU] resetFace 失败', err);
+  }
+},
+
+closeMouth: () => {
+  setCoreParam('ParamMouthOpenY', 0, 1);
+},
+
+resetFace: async () => {
+  try {
+    setCoreParam('ParamMouthOpenY', 0, 1);
+    setCoreParam('ParamAngleX', 0, 1);
+    setCoreParam('ParamAngleY', 0, 1);
+    setCoreParam('ParamBodyAngleX', 0, 1);
+    setCoreParam('ParamBodyAngleY', 0, 1);
+
+    if (modelRef.current?.expression) {
+      await modelRef.current.expression('Init_Clean');
+    }
+  } catch (err) {
+    console.warn('[BGU] resetFace 失败', err);
+  }
+},
 
       setCoreParam,
 

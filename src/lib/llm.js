@@ -69,7 +69,7 @@ export async function sendToLLM({
       reply: "……（信号同步中断，请检查校长端的网络链路）",
       mood_change: 0,
       motion: "Idle",
-      expression: "Neutral"
+      expression: "Init_Clean"
     };
   }
 }

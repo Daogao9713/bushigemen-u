@@ -1,25 +1,20 @@
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const TTS_URL = 'https://mcpferrkabvnkwklotlg.supabase.co/functions/v1/tts';
 
-export async function speak(text) {
+export async function speak(text, voice = 'nova') {
   if (!text) return null;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    const response = await fetch(TTS_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'tts-1',
-        input: text,
-        voice: 'nova', // alloy, echo, fable, onyx, nova, shimmer
-        response_format: 'mp3',
-        speed: 1.0,
-      }),
+      body: JSON.stringify({ text, voice }),
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error('[BGU_TTS_ERROR_BODY]', errText);
       throw new Error('TTS 请求失败');
     }
 

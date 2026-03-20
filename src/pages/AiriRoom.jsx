@@ -273,23 +273,29 @@ const AiriRoom = () => {
           await mascotRef.current.syncLipWithAudio(audio);
         }
 
-        const cleanup = () => {
-          if (mouthTimerRef.current) {
-            clearInterval(mouthTimerRef.current);
-            mouthTimerRef.current = null;
-          }
+const cleanup = async () => {
+  if (mascotRef.current?.stopLipSync) {
+    mascotRef.current.stopLipSync();
+  }
 
-          if (mascotRef.current?.setCoreParam) {
-            mascotRef.current.setCoreParam('ParamMouthOpenY', 0);
-          }
+  if (mascotRef.current?.closeMouth) {
+    mascotRef.current.closeMouth();
+  } else if (mascotRef.current?.setCoreParam) {
+    mascotRef.current.setCoreParam('ParamMouthOpenY', 0, 1);
+  }
 
-          if (currentAudioUrlRef.current) {
-            URL.revokeObjectURL(currentAudioUrlRef.current);
-            currentAudioUrlRef.current = null;
-          }
+  // 可选：恢复默认表情
+  if (mascotRef.current?.resetFace) {
+    await mascotRef.current.resetFace();
+  }
 
-          currentAudioRef.current = null;
-        };
+  if (currentAudioUrlRef.current) {
+    URL.revokeObjectURL(currentAudioUrlRef.current);
+    currentAudioUrlRef.current = null;
+  }
+
+  currentAudioRef.current = null;
+};
 
         audio.onended = cleanup;
         audio.onerror = cleanup;

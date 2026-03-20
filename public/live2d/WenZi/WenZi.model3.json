@@ -1,43 +1,48 @@
 {
-	"Version": 3,
-	"FileReferences": {
-		"Moc": "WenZi.moc3",
-		"Textures": [
-			"WenZi.4096/texture_00.png",
-			"WenZi.4096/texture_01.png",
-			"WenZi.4096/texture_02.png",
-			"WenZi.4096/texture_03.png",
-			"WenZi.4096/texture_04.png",
-			"WenZi.4096/texture_05.png"
-		],
-		"Physics": "WenZi.physics3.json",
-		"DisplayInfo": "WenZi.cdi3.json",
-		"Expressions": [
-		{ "Name": "Neutral", "File": "Expressions/Init_Clean.exp3.json" },  
-        { "Name": "Smile", "File": "Expressions/Smile.exp3.json" },
-        { "Name": "LoveEyes", "File": "Expressions/LoveEyes.exp3.json" },
-        { "Name": "Crying", "File": "Expressions/Crying.exp3.json" },
-        { "Name": "PropMic", "File": "Expressions/PropMic.exp3.json" },
-        { "Name": "PropGamepad", "File": "Expressions/PropGamepad.exp3.json" },
-        { "Name": "OutfitCoat", "File": "Expressions/OutfitCoat.exp3.json" },
-        { "Name": "PropEarSpoon", "File": "Expressions/PropEarSpoon.exp3.json" }
-		],
-		"Motions": {
-			"Idle": [
-				{ "File": "Motions/Idle.motion3.json" }
-			]
-		}
-	},
-	"Groups": [
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "WenZi.moc3",
+    "Textures": [
+      "WenZi.4096/texture_00.png",
+      "WenZi.4096/texture_01.png",
+      "WenZi.4096/texture_02.png",
+      "WenZi.4096/texture_03.png",
+      "WenZi.4096/texture_04.png",
+      "WenZi.4096/texture_05.png"
+    ],
+    "Physics": "WenZi.physics3.json",
+    "DisplayInfo": "WenZi.cdi3.json",
+    "Expressions": [
+      { "Name": "Init_Clean", "File": "Expressions/Init_Clean.exp3.json" },
+      { "Name": "Blank", "File": "Expressions/Blank.exp3.json" },
+      { "Name": "BottleOff", "File": "Expressions/BottleOff.exp3.json" },
+      { "Name": "Breath", "File": "Expressions/Breath.exp3.json" },
+      { "Name": "Crying", "File": "Expressions/Crying.exp3.json" },
+      { "Name": "DotsEyes", "File": "Expressions/DotsEyes.exp3.json" },
+      { "Name": "LoveEyes", "File": "Expressions/LoveEyes.exp3.json" },
+      { "Name": "Tongue", "File": "Expressions/Tongue.exp3.json" },
+      { "Name": "OutfitCoat", "File": "Expressions/OutfitCoat.exp3.json" },
+      { "Name": "OutfitStrap", "File": "Expressions/OutfitStrap.exp3.json" },
+      { "Name": "PropEarSpoon", "File": "Expressions/PropEarSpoon.exp3.json" },
+      { "Name": "PropGamepad", "File": "Expressions/PropGamepad.exp3.json" },
+      { "Name": "PropMic", "File": "Expressions/PropMic.exp3.json" }
+    ],
+    "Motions": {
+      "Idle": [
+        { "File": "Motions/Idle.motion3.json" }
+      ]
+    }
+  },
+  "Groups": [
     {
-        "Target": "Parameter",
-        "Name": "EyeBlink",
-        "Ids": ["ParamEyeLOpen", "ParamEyeROpen"]
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": ["ParamEyeLOpen", "ParamEyeROpen"]
     },
     {
-        "Target": "Parameter",
-        "Name": "HideItems",
-        "Ids": ["Param7", "expression24"] 
+      "Target": "Parameter",
+      "Name": "HideItems",
+      "Ids": ["Param7", "expression24"]
     }
-]
+  ]
 }
