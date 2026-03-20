@@ -1,26 +1,47 @@
-// src/pages/AiriRoom.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Lottie from 'lottie-react';
+
 import Live2DMascot from '../components/Live2DMascot';
-import { useSoulStore } from '../store/useSoulStore';
 import MoodHUD from '../components/MoodHUD';
+
+import { useSoulStore } from '../store/useSoulStore';
 import { sendToLLM } from '../lib/llm';
 import { exportMemory, parseMemoryFile } from '../lib/memory';
+import { speak } from '../lib/tts';
 
-// 如果你项目里已经有 vibration 工具函数，就把这个删掉改成 import
+import loadingMagic from '../assets/lottie/loading_magic.json';
+
+// 如果你项目里已有 vibration 工具函数，可替换成 import
 const vibrateDevice = (pattern) => {
   if (typeof window !== 'undefined' && navigator.vibrate) {
     navigator.vibrate(pattern);
   }
 };
 
+const DEFAULT_TUNING = {
+  brightness: 180,
+  magicScale: 0.62,
+  roxyScale: 2.15,
+  roxyX: 13,
+  roxyY: 123,
+  spinSpeed: 2.5,
+};
+
 const AiriRoom = () => {
   const containerRef = useRef(null);
   const mascotRef = useRef(null);
+  const historyScrollRef = useRef(null);
   const lastInteractionTime = useRef(Date.now());
   const loadTimers = useRef([]);
 
+  // TTS / Audio refs
+  const currentAudioRef = useRef(null);
+  const currentAudioUrlRef = useRef(null);
+  const mouthTimerRef = useRef(null);
+
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // -----------------------------
   // 1) 全局状态 / 灵魂状态
@@ -41,7 +62,6 @@ const AiriRoom = () => {
   const [message, setMessage] = useState('正在建立 BGU 灵魂链路...');
   const [displayedText, setDisplayedText] = useState('');
   const [inputValue, setInputValue] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
 
   // -----------------------------
@@ -69,46 +89,65 @@ const AiriRoom = () => {
   // 4) 打字机效果
   // -----------------------------
   useEffect(() => {
+    if (!message) {
+      setDisplayedText('');
+      return;
+    }
+
     let index = 0;
     setDisplayedText('');
-    if (!message) return;
 
     const timer = setInterval(() => {
       index += 1;
       setDisplayedText(message.slice(0, index));
       if (index >= message.length) clearInterval(timer);
-    }, 24);
+    }, 20);
 
     return () => clearInterval(timer);
   }, [message]);
 
   // -----------------------------
-  // 5) 核心锁定与视觉视口同步协议
+  // 5) 视觉视口 / 键盘 / 触摸协议
   // -----------------------------
   useEffect(() => {
-    const initialHeight = window.innerHeight;
-    if (containerRef.current) {
-      containerRef.current.style.height = `${initialHeight}px`;
-    }
+    const syncViewport = () => {
+      if (containerRef.current) {
+        containerRef.current.style.height = `${window.innerHeight}px`;
+      }
 
-    const handleViewportChange = () => {
       if (window.visualViewport) {
-        const offset = window.innerHeight - window.visualViewport.height;
+        const vv = window.visualViewport;
+        const offset = window.innerHeight - (vv.height + vv.offsetTop);
         setKeyboardHeight(offset > 0 ? offset : 0);
+      } else {
+        setKeyboardHeight(0);
       }
     };
 
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportChange);
-      window.visualViewport.addEventListener('scroll', handleViewportChange);
-    }
+    syncViewport();
 
     const preventDefault = (e) => {
-      const tag = e.target.tagName;
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      const target = e.target;
+
+      if (
+        target.closest('[data-allow-scroll="true"]') ||
+        target.closest('[data-allow-touch="true"]')
+      ) {
+        return;
+      }
+
+      const tag = target.tagName;
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'BUTTON') {
         if (e.cancelable) e.preventDefault();
       }
     };
+
+    window.addEventListener('resize', syncViewport);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewport);
+      window.visualViewport.addEventListener('scroll', syncViewport);
+    }
 
     document.addEventListener('touchmove', preventDefault, { passive: false });
     document.body.style.position = 'fixed';
@@ -118,10 +157,13 @@ const AiriRoom = () => {
     document.body.style.overscrollBehavior = 'none';
 
     return () => {
+      window.removeEventListener('resize', syncViewport);
+
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleViewportChange);
-        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+        window.visualViewport.removeEventListener('resize', syncViewport);
+        window.visualViewport.removeEventListener('scroll', syncViewport);
       }
+
       document.removeEventListener('touchmove', preventDefault);
       document.body.style.position = '';
       document.body.style.overflow = '';
@@ -134,13 +176,22 @@ const AiriRoom = () => {
   // -----------------------------
   // 6) 调律参数
   // -----------------------------
-  const [brightness, setBrightness] = useState(400);
-  const [magicScale, setMagicScale] = useState(0.6);
-  const [roxyScale, setRoxyScale] = useState(2.15);
-  const [roxyX, setRoxyX] = useState(13);
-  const [roxyY, setRoxyY] = useState(123);
-  const [spinSpeed, setSpinSpeed] = useState(2.5);
+  const [brightness, setBrightness] = useState(DEFAULT_TUNING.brightness);
+  const [magicScale, setMagicScale] = useState(DEFAULT_TUNING.magicScale);
+  const [roxyScale, setRoxyScale] = useState(DEFAULT_TUNING.roxyScale);
+  const [roxyX, setRoxyX] = useState(DEFAULT_TUNING.roxyX);
+  const [roxyY, setRoxyY] = useState(DEFAULT_TUNING.roxyY);
+  const [spinSpeed, setSpinSpeed] = useState(DEFAULT_TUNING.spinSpeed);
   const [showPanel, setShowPanel] = useState(false);
+
+  const resetTuning = () => {
+    setBrightness(DEFAULT_TUNING.brightness);
+    setMagicScale(DEFAULT_TUNING.magicScale);
+    setRoxyScale(DEFAULT_TUNING.roxyScale);
+    setRoxyX(DEFAULT_TUNING.roxyX);
+    setRoxyY(DEFAULT_TUNING.roxyY);
+    setSpinSpeed(DEFAULT_TUNING.spinSpeed);
+  };
 
   // -----------------------------
   // 7) 仪式感加载系统
@@ -151,31 +202,120 @@ const AiriRoom = () => {
   useEffect(() => {
     vibrateDevice(50);
 
+    loadTimers.current = [];
+
     loadTimers.current.push(
       setTimeout(() => {
         setLoadStage('SCAN');
         vibrateDevice([100, 50, 100]);
-      }, 1500)
+      }, 1400)
     );
 
     loadTimers.current.push(
       setTimeout(() => {
         setLoadStage('DEPLOY');
-        vibrateDevice(400);
-      }, 3000)
+        vibrateDevice(300);
+      }, 2800)
     );
 
     loadTimers.current.push(
       setTimeout(() => {
         setIsLoading(false);
-      }, 4500)
+      }, 4300)
     );
 
-    return () => loadTimers.current.forEach(clearTimeout);
+    return () => {
+      loadTimers.current.forEach(clearTimeout);
+    };
   }, []);
 
   // -----------------------------
-  // 8) 核心对话处理
+  // 8) TTS / 唇形同步
+  // -----------------------------
+  const stopCurrentSpeech = useCallback(() => {
+    if (mouthTimerRef.current) {
+      clearInterval(mouthTimerRef.current);
+      mouthTimerRef.current = null;
+    }
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+
+    if (mascotRef.current?.setCoreParam) {
+      mascotRef.current.setCoreParam('ParamMouthOpenY', 0);
+    }
+
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current);
+      currentAudioUrlRef.current = null;
+    }
+  }, []);
+
+  const playRoxyVoice = useCallback(
+    async (text) => {
+      if (!text) return;
+
+      stopCurrentSpeech();
+
+      try {
+        const audioUrl = await speak(text);
+        if (!audioUrl) return;
+
+        currentAudioUrlRef.current = audioUrl;
+
+        const audio = new Audio(audioUrl);
+        currentAudioRef.current = audio;
+
+        if (mascotRef.current?.syncLipWithAudio) {
+          await mascotRef.current.syncLipWithAudio(audio);
+        }
+
+        const cleanup = () => {
+          if (mouthTimerRef.current) {
+            clearInterval(mouthTimerRef.current);
+            mouthTimerRef.current = null;
+          }
+
+          if (mascotRef.current?.setCoreParam) {
+            mascotRef.current.setCoreParam('ParamMouthOpenY', 0);
+          }
+
+          if (currentAudioUrlRef.current) {
+            URL.revokeObjectURL(currentAudioUrlRef.current);
+            currentAudioUrlRef.current = null;
+          }
+
+          currentAudioRef.current = null;
+        };
+
+        audio.onended = cleanup;
+        audio.onerror = cleanup;
+
+        try {
+          await audio.play();
+        } catch (playError) {
+          console.warn('[BGU_TTS] 自动播放失败:', playError);
+          cleanup();
+        }
+      } catch (error) {
+        console.error('[BGU_TTS] 播放流程异常:', error);
+        stopCurrentSpeech();
+      }
+    },
+    [stopCurrentSpeech]
+  );
+
+  useEffect(() => {
+    return () => {
+      stopCurrentSpeech();
+    };
+  }, [stopCurrentSpeech]);
+
+  // -----------------------------
+  // 9) 核心对话处理
   // -----------------------------
   const processChat = useCallback(
     async (userInput, isInteraction = false) => {
@@ -223,9 +363,12 @@ const AiriRoom = () => {
         });
 
         if (mascotRef.current) {
-          if (res?.motion) mascotRef.current.playMotion(res.motion);
-          if (res?.expression) mascotRef.current.setExpression(res.expression);
+          if (res?.motion) mascotRef.current.playMotion?.(res.motion);
+          if (res?.expression) mascotRef.current.setExpression?.(res.expression);
         }
+
+        // 🎤 AI 回复后播放语音并进行简易唇形同步
+        void playRoxyVoice(replyText);
 
         vibrateDevice(isInteraction ? [30, 30] : [30, 50]);
       } catch (error) {
@@ -236,11 +379,20 @@ const AiriRoom = () => {
         setIsThinking(false);
       }
     },
-    [isLoading, isThinking, messages, mood, memorySummary, addMessage, changeMood]
+    [
+      isLoading,
+      isThinking,
+      messages,
+      mood,
+      memorySummary,
+      addMessage,
+      changeMood,
+      playRoxyVoice,
+    ]
   );
 
   // -----------------------------
-  // 9) 拖拽导入记忆系统
+  // 10) 拖拽导入记忆系统
   // -----------------------------
   const handleFileDrop = (e) => {
     e.preventDefault();
@@ -250,8 +402,10 @@ const AiriRoom = () => {
     if (!file) return;
 
     const reader = new FileReader();
+
     reader.onload = (event) => {
-      const data = parseMemoryFile(event.target.result);
+      const rawText = event.target?.result;
+      const data = parseMemoryFile(rawText);
 
       if (data) {
         loadTimers.current.forEach(clearTimeout);
@@ -259,10 +413,12 @@ const AiriRoom = () => {
         setMood(data.mood);
         setMemorySummary(data.summary);
 
-        vibrateDevice([50, 100, 50]);
+        setLoadStage('RESTORE');
         setIsLoading(false);
+
+        vibrateDevice([50, 100, 50]);
         setSpeaker('ROXY');
-        setMessage(`记忆链接已恢复。欢迎回来，${data.userName}。`);
+        setMessage(`记忆链接已恢复。欢迎回来，${data.userName || loggedInUserName || '校长'}。`);
       } else {
         setSpeaker('SYSTEM');
         setMessage('记忆结晶解析失败。');
@@ -285,7 +441,7 @@ const AiriRoom = () => {
   }, [isLoading, memorySummary]);
 
   // -----------------------------
-  // 10) 表单发送
+  // 11) 表单发送
   // -----------------------------
   const handleSend = async (e) => {
     e.preventDefault();
@@ -298,7 +454,7 @@ const AiriRoom = () => {
   };
 
   // -----------------------------
-  // 11) 监听物理互动事件
+  // 12) 监听物理互动事件
   // -----------------------------
   useEffect(() => {
     const handlePhysicalHit = (e) => {
@@ -310,16 +466,17 @@ const AiriRoom = () => {
   }, [processChat]);
 
   // -----------------------------
-  // 12) 离场协议
+  // 13) 离场协议
   // -----------------------------
   const handleExit = () => {
+    stopCurrentSpeech();
     vibrateDevice(100);
     exportMemory(loggedInUserName, mood, messages);
     window.location.href = '/';
   };
 
   // -----------------------------
-  // 13) 灵魂唤醒：监听主动发言 + 随机 idle
+  // 14) 灵魂唤醒：主动发言 + idle
   // -----------------------------
   useEffect(() => {
     if (isLoading) return;
@@ -352,6 +509,7 @@ const AiriRoom = () => {
       window.dispatchEvent(new CustomEvent('roxy_random_idle'));
       setSpeaker('ROXY');
       setMessage(randomSpeech);
+      lastInteractionTime.current = Date.now();
     }, 25000);
 
     return () => {
@@ -361,128 +519,184 @@ const AiriRoom = () => {
   }, [isLoading, isThinking]);
 
   // -----------------------------
-  // 14) 主题配置
+  // 15) 历史记录辅助效果
+  // -----------------------------
+  useEffect(() => {
+    if (!showHistory) return;
+    if (!historyScrollRef.current) return;
+
+    historyScrollRef.current.scrollTop = historyScrollRef.current.scrollHeight;
+  }, [showHistory, messages]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setShowHistory(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // -----------------------------
+  // 16) 主题配置
   // -----------------------------
   const theme = isDayMode
     ? {
         bg: 'from-white via-sky-50 to-blue-100',
         magicColor: 'border-sky-400',
         magicGlow: 'shadow-[0_0_30px_rgba(56,189,248,0.5)]',
-        box: 'bg-white/85 border-sky-300 shadow-sky-200/50',
+        box: 'bg-white/80 border-sky-300 shadow-sky-200/40 text-sky-950',
         name: 'bg-sky-500 text-white',
         inputLine: 'border-sky-400/20',
         inputText: 'text-sky-900 placeholder:text-sky-500/50',
         icon: 'text-sky-500',
+        panel: 'bg-white/95 border-sky-200 text-sky-950',
+        historyPanel: 'bg-white/85 border-sky-200 text-slate-800',
+        sendBtn:
+          'bg-sky-500 hover:bg-sky-600 text-white shadow-[0_0_16px_rgba(14,165,233,0.35)]',
       }
     : {
         bg: 'from-indigo-950 via-slate-950 to-black',
         magicColor: 'border-purple-500',
         magicGlow: 'shadow-[0_0_30px_rgba(168,85,247,0.5)]',
-        box: 'bg-slate-900/90 border-purple-500 text-purple-100 shadow-purple-900/50',
+        box: 'bg-slate-900/78 border-purple-500/60 text-purple-100 shadow-purple-900/40',
         name: 'bg-purple-600 text-white',
-        inputLine: 'border-purple-500/50',
+        inputLine: 'border-purple-500/40',
         inputText: 'text-purple-50 placeholder:text-purple-400/60',
         icon: 'text-purple-400',
+        panel: 'bg-slate-900/95 border-purple-500/40 text-purple-100',
+        historyPanel: 'bg-slate-900/90 border-slate-700 text-slate-100',
+        sendBtn:
+          'bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_16px_rgba(168,85,247,0.35)]',
       };
+
+  const loadProgress = isDragging
+    ? 85
+    : loadStage === 'INIT'
+    ? 25
+    : loadStage === 'SCAN'
+    ? 62
+    : 100;
 
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 w-screen overflow-hidden transition-all duration-1000 bg-gradient-to-br ${theme.bg} touch-none`}
+      className={`fixed inset-0 w-screen overflow-hidden bg-gradient-to-br transition-all duration-1000 ${theme.bg}`}
     >
       <style>{`
         @keyframes bgu-spin-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes bgu-spin-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes soft-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes thinking-bounce {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+          40% { transform: scale(1); opacity: 1; }
+        }
         .spin-cw { animation: bgu-spin-cw linear infinite; }
         .spin-ccw { animation: bgu-spin-ccw linear infinite; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .soft-float { animation: soft-float 3.5s ease-in-out infinite; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(125, 211, 252, 0.28);
+          border-radius: 999px;
+        }
+        .thinking-dot {
+          animation: thinking-bounce 1.2s infinite ease-in-out;
+        }
       `}</style>
 
-      {/* 1. 左上角灵魂 HUD */}
       {!isLoading && <MoodHUD />}
 
-      {/* 2. 历史记录层 */}
       {showHistory && (
         <div
-          className="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-xl p-6 md:p-12 flex flex-col animate-in fade-in duration-300"
+          className="fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-xl p-4 md:p-8"
           onClick={() => setShowHistory(false)}
         >
-          <div className="flex justify-between items-center border-b border-sky-500/30 pb-6 mb-8">
-            <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <span className="font-mono text-sky-400 text-xs tracking-[0.3em]">
-                SYSTEM_ENCOUNTER_LOGS
-              </span>
-              <span className="text-slate-500 text-[9px] mt-1">
-                BGU_NEURAL_LINK_HISTORY // V1.0
-              </span>
-            </div>
-
-            <button
-              onClick={() => setShowHistory(false)}
-              className="text-sky-400 font-mono text-xs hover:text-white transition-colors"
-            >
-              [ CLOSE_ESC ]
-            </button>
-          </div>
-
           <div
-            className="flex-1 overflow-y-auto space-y-8 pr-4 custom-scrollbar"
+            className={`mx-auto flex h-full max-w-5xl flex-col rounded-3xl border shadow-2xl ${theme.historyPanel}`}
             onClick={(e) => e.stopPropagation()}
           >
-            {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-600 font-mono text-xs italic">
-                - NO_RECORD_FOUND -
+            <div className="flex items-center justify-between border-b border-current/10 px-5 py-4 md:px-8 md:py-6">
+              <div className="flex flex-col">
+                <span className="font-mono text-[11px] tracking-[0.3em] text-sky-400">
+                  SYSTEM_ENCOUNTER_LOGS
+                </span>
+                <span className="mt-1 text-[9px] text-slate-500">
+                  BGU_NEURAL_LINK_HISTORY // V1.1
+                </span>
               </div>
-            ) : (
-              messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex flex-col ${
-                    msg.role === 'user' ? 'items-end' : 'items-start'
-                  }`}
-                >
-                  <div className="flex items-baseline gap-3 mb-2 opacity-50 font-mono text-[9px]">
-                    <span className="text-sky-500">
-                      {msg.role === 'user' ? loggedInUserName : 'ROXY'}
-                    </span>
-                    <span className="text-slate-600">
-                      #{idx.toString().padStart(3, '0')}
-                    </span>
-                  </div>
 
-                  <div
-                    className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-sky-500/10 text-sky-100 border border-sky-500/20 rounded-tr-none'
-                        : 'bg-slate-800/40 text-slate-100 border border-slate-700/50 rounded-tl-none'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="rounded-full border border-current/20 px-3 py-1 font-mono text-[11px] opacity-70 transition hover:opacity-100"
+              >
+                [ CLOSE_ESC ]
+              </button>
+            </div>
+
+            <div
+              ref={historyScrollRef}
+              data-allow-scroll="true"
+              className="custom-scrollbar flex-1 overflow-y-auto px-5 py-6 md:px-8 md:py-8"
+            >
+              {messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center font-mono text-xs italic text-slate-500">
+                  - NO_RECORD_FOUND -
                 </div>
-              ))
-            )}
+              ) : (
+                <div className="space-y-8">
+                  {messages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex flex-col ${
+                        msg.role === 'user' ? 'items-end' : 'items-start'
+                      }`}
+                    >
+                      <div className="mb-2 flex items-baseline gap-3 opacity-60">
+                        <span className="font-mono text-[10px] text-sky-400">
+                          {msg.role === 'user'
+                            ? loggedInUserName || 'CHANCELLOR'
+                            : 'ROXY'}
+                        </span>
+                        <span className="font-mono text-[9px] text-slate-500">
+                          #{idx.toString().padStart(3, '0')}
+                        </span>
+                      </div>
+
+                      <div
+                        className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed md:px-5 md:py-4 ${
+                          msg.role === 'user'
+                            ? 'rounded-tr-none border border-sky-500/20 bg-sky-500/10 text-sky-100'
+                            : 'rounded-tl-none border border-slate-700/50 bg-slate-800/40 text-slate-100'
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* 离场保存按钮 */}
       {!isLoading && (
         <button
           onClick={handleExit}
-          className="fixed top-6 right-6 z-50 px-4 py-2 border border-red-500/30 bg-red-950/20 text-red-400 font-mono text-xs rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg backdrop-blur-md pointer-events-auto active:scale-95"
+          className="fixed right-4 top-4 z-50 rounded-full border border-red-500/30 bg-red-950/20 px-4 py-2 font-mono text-xs text-red-400 shadow-lg backdrop-blur-md transition-all hover:bg-red-500 hover:text-white active:scale-95 md:right-6 md:top-6"
         >
           [ END_ENCOUNTER ]
         </button>
       )}
 
-      {/* 加载层 */}
       {isLoading && (
         <div
-          className={`absolute inset-0 z-[1000] flex flex-col items-center justify-center transition-colors duration-300 ${
-            isDragging ? 'bg-sky-950' : 'bg-slate-950'
+          className={`absolute inset-0 z-[1000] flex flex-col items-center justify-center bg-slate-950 px-6 transition-colors duration-500 ${
+            isDragging ? 'bg-sky-950/95' : ''
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -491,109 +705,87 @@ const AiriRoom = () => {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleFileDrop}
         >
-          <div className="relative w-64 h-64 flex items-center justify-center pointer-events-none">
-            <div className={`absolute w-6 h-6 rounded-full bg-current ${theme.icon} animate-ping ${theme.magicGlow}`} />
-            <div className={`absolute w-2 h-2 rounded-full bg-current ${theme.icon}`} />
+          <div
+            className={`relative flex h-80 w-80 items-center justify-center rounded-full border transition-all duration-300 md:h-96 md:w-96 ${
+              isDragging
+                ? 'border-sky-400/60 shadow-[0_0_60px_rgba(56,189,248,0.18)]'
+                : 'border-slate-800'
+            }`}
+          >
+            <Lottie
+              animationData={loadingMagic}
+              loop={true}
+              className="pointer-events-none h-full w-full drop-shadow-[0_0_20px_rgba(56,189,248,0.6)]"
+            />
 
-            {isDragging && (
-              <div className="absolute inset-0 border-4 border-dashed border-sky-400 animate-pulse rounded-full" />
-            )}
-
-            {loadStage !== 'INIT' && !isDragging && (
-              <>
-                <div
-                  className={`absolute w-40 h-40 border-4 border-dashed ${theme.magicColor} rounded-full spin-cw`}
-                  style={{ animationDuration: '3s' }}
-                />
-                <div
-                  className={`absolute w-56 h-56 border-y-4 border-transparent border-x-4 ${theme.magicColor} opacity-50 rounded-full spin-ccw`}
-                  style={{ animationDuration: '1.5s' }}
-                />
-              </>
-            )}
-
-            {loadStage === 'DEPLOY' && !isDragging && (
-              <div
-                className={`absolute w-full h-full border-8 ${theme.magicColor} rounded-full animate-ping opacity-0`}
-                style={{ animationDuration: '1.5s' }}
-              />
-            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="mt-40 rounded-full border border-sky-400/20 bg-slate-950/40 px-4 py-2 backdrop-blur-md">
+                <p className="animate-pulse font-mono text-[10px] tracking-[0.35em] text-sky-400">
+                  {isDragging ? 'DETECTING_MEMORY' : `${loadStage}_PROCEEDING`}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-16 flex flex-col items-center gap-3 pointer-events-none">
-            <p
-              className={`font-mono text-[10px] ${
-                isDragging ? 'text-sky-400' : theme.icon
-              } tracking-[0.5em] font-black`}
-            >
-              {isDragging
-                ? 'DETECTING_MEMORY_CRYSTAL...'
-                : loadStage === 'INIT'
-                ? 'CORE_IGNITION...'
-                : loadStage === 'SCAN'
-                ? 'SCANNING_ENVIRONMENT...'
-                : 'MAGIC_LINK_DEPLOYED!'}
-            </p>
-
-            <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden shadow-inner">
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <div className="h-1.5 w-56 overflow-hidden rounded-full bg-slate-800">
               <div
-                className={`h-full bg-current ${
-                  isDragging ? 'bg-sky-400 w-full animate-pulse' : theme.icon
-                } transition-all ease-out`}
-                style={{
-                  width: isDragging
-                    ? '100%'
-                    : loadStage === 'INIT'
-                    ? '15%'
-                    : loadStage === 'SCAN'
-                    ? '60%'
-                    : '100%',
-                  transitionDuration: '1.5s',
-                }}
+                className="h-full bg-sky-400 transition-all duration-700"
+                style={{ width: `${loadProgress}%` }}
               />
             </div>
 
-            <p className="mt-4 text-[9px] text-slate-500 font-mono">
-              [ 若持有旧日记忆结晶，请投入此阵法 ]
+            <p className="font-mono text-[9px] text-slate-500 opacity-70">
+              [ BGU_SOUL_LINK_STABILIZING ]
+            </p>
+
+            <p className="mt-2 text-center font-mono text-[10px] text-slate-600">
+              {isDragging
+                ? 'drop memory crystal here'
+                : '你也可以将记忆文件拖入此处恢复链路'}
             </p>
           </div>
         </div>
       )}
 
-      {/* 魔法阵背景 */}
       <div
-        className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none transition-transform duration-700"
-        style={{ transform: `scale(${magicScale})`, filter: `brightness(${brightness}%)` }}
+        className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center transition-transform duration-700"
+        style={{
+          transform: `scale(${magicScale})`,
+          filter: `brightness(${brightness}%)`,
+        }}
       >
-        <div className="relative w-full h-full flex items-center justify-center opacity-40">
+        <div className="relative flex h-full w-full items-center justify-center opacity-40">
           <div
-            className={`absolute w-[900px] h-[900px] border-[2px] border-dashed ${theme.magicColor} spin-cw`}
+            className={`absolute h-[900px] w-[900px] border-[2px] border-dashed ${theme.magicColor} spin-cw`}
             style={{ animationDuration: `${40 / spinSpeed}s` }}
           />
           <div
-            className={`absolute w-[700px] h-[700px] border-2 ${theme.magicColor} spin-ccw`}
+            className={`absolute h-[700px] w-[700px] border-2 ${theme.magicColor} spin-ccw`}
             style={{ animationDuration: `${25 / spinSpeed}s` }}
           />
           <div
-            className={`absolute w-[450px] h-[450px] border-[4px] ${theme.magicColor} animate-pulse ${theme.magicGlow}`}
+            className={`absolute h-[450px] w-[450px] border-[4px] ${theme.magicColor} animate-pulse ${theme.magicGlow}`}
           />
           <div
-            className={`absolute w-[350px] h-[350px] ${
+            className={`absolute h-[350px] w-[350px] rounded-full blur-[120px] opacity-20 ${
               isDayMode ? 'bg-sky-400' : 'bg-purple-600'
-            } blur-[120px] rounded-full opacity-20`}
+            }`}
           />
         </div>
       </div>
 
-      {/* Roxy 展示区 */}
       <div
-        className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none overflow-hidden"
+        className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden"
         style={{
           transform: `translate(${roxyX}px, ${roxyY}px) scale(${roxyScale})`,
           transformOrigin: 'center center',
         }}
       >
-        <div className="w-full h-full max-w-4xl pointer-events-none">
+        <div
+          data-allow-touch="true"
+          className="soft-float h-full w-full max-w-4xl pointer-events-auto"
+        >
           <Live2DMascot
             ref={mascotRef}
             modelUrl="/live2d/WenZi/WenZi.model3.json"
@@ -601,94 +793,162 @@ const AiriRoom = () => {
         </div>
       </div>
 
-      {/* 对话框 */}
       <div
-        className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-20 transition-transform duration-300 ease-out"
+        className="absolute bottom-4 left-1/2 z-20 w-[94%] max-w-4xl -translate-x-1/2 transition-transform duration-300 ease-out md:bottom-8"
         style={{ transform: `translate(-50%, -${keyboardHeight}px)` }}
       >
-        <div className={`relative backdrop-blur-3xl border-2 rounded-xl p-6 md:p-8 shadow-2xl ${theme.box}`}>
+        <div
+          className={`relative rounded-2xl border-2 p-5 shadow-2xl backdrop-blur-xl md:p-7 ${theme.box}`}
+        >
           <div
-            className={`absolute -top-5 left-8 px-8 py-2 rounded-lg font-black tracking-widest text-sm shadow-xl flex items-center gap-4 ${theme.name}`}
+            className={`absolute -top-5 left-5 flex items-center gap-3 rounded-xl px-5 py-2 text-sm font-black tracking-widest shadow-xl ${theme.name}`}
           >
-            {speaker}
+            <span>{speaker}</span>
+
+            {isThinking && (
+              <div className="flex items-center gap-1">
+                <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-white" />
+                <span
+                  className="thinking-dot h-1.5 w-1.5 rounded-full bg-white"
+                  style={{ animationDelay: '0.15s' }}
+                />
+                <span
+                  className="thinking-dot h-1.5 w-1.5 rounded-full bg-white"
+                  style={{ animationDelay: '0.3s' }}
+                />
+              </div>
+            )}
+
             <button
               onClick={() => setShowHistory(true)}
               type="button"
-              className="opacity-50 hover:opacity-100 transition-opacity text-[10px] border border-white/40 px-1.5 py-0.5 rounded font-mono"
+              className="rounded border border-white/40 px-1.5 py-0.5 font-mono text-[10px] opacity-60 transition hover:opacity-100"
             >
               LOG
             </button>
           </div>
 
-          <div className="min-h-[80px] md:min-h-[100px] text-lg md:text-xl font-medium leading-relaxed mb-4 whitespace-pre-wrap">
-            {displayedText}
-            <span className="inline-block w-1.5 h-5 ml-2 bg-current animate-pulse" />
+          <div className="min-h-[96px] rounded-xl bg-black/5 px-1 py-3 text-base leading-relaxed md:min-h-[110px] md:text-xl">
+            <div className="whitespace-pre-wrap break-words">
+              {displayedText}
+              <span className="ml-2 inline-block h-5 w-1.5 animate-pulse bg-current align-middle" />
+            </div>
           </div>
 
-          <form onSubmit={handleSend} className={`relative flex items-center pt-4 border-t ${theme.inputLine}`}>
-            <span className={`mr-3 animate-pulse font-black ${theme.icon}`}>▶</span>
+          <form
+            onSubmit={handleSend}
+            className={`mt-4 flex items-center gap-3 border-t pt-4 ${theme.inputLine}`}
+          >
+            <span className={`animate-pulse font-black ${theme.icon}`}>▶</span>
+
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isThinking ? 'Roxy 正在回应中...' : '请在这里诉说 TELL ME HERE'}
+              placeholder={
+                isThinking
+                  ? 'Roxy 正在回应中...'
+                  : '请在这里诉说 / TELL ME HERE'
+              }
               disabled={isLoading || isThinking}
-              className={`bg-transparent w-full outline-none font-mono text-sm tracking-widest disabled:opacity-50 ${theme.inputText}`}
+              className={`w-full bg-transparent font-mono text-sm tracking-wider outline-none disabled:opacity-50 md:text-[15px] ${theme.inputText}`}
             />
+
+            <button
+              type="submit"
+              disabled={isLoading || isThinking || !inputValue.trim()}
+              className={`rounded-xl px-4 py-2 text-xs font-bold tracking-widest transition disabled:cursor-not-allowed disabled:opacity-40 ${theme.sendBtn}`}
+            >
+              SEND
+            </button>
           </form>
         </div>
       </div>
 
-      {/* 侧边调律面板 */}
       <div
-        className={`fixed top-1/2 -translate-y-1/2 left-0 z-[110] transition-all duration-500 ${
+        className={`fixed left-0 top-1/2 z-[110] -translate-y-1/2 transition-all duration-500 ${
           showPanel ? 'translate-x-0' : '-translate-x-[calc(100%-24px)]'
         }`}
       >
         <div className="flex">
           <div
-            className={`p-6 rounded-r-3xl border-y border-r shadow-2xl w-64 backdrop-blur-xl ${
-              isDayMode ? 'bg-white/95 border-sky-200' : 'bg-slate-900/95 border-purple-500/40'
-            }`}
+            className={`w-64 rounded-r-3xl border-y border-r p-6 shadow-2xl backdrop-blur-xl ${theme.panel}`}
           >
-            <h3
-              className={`text-[10px] font-black mb-6 tracking-widest uppercase opacity-70 ${
-                isDayMode ? 'text-sky-900' : 'text-purple-100'
-              }`}
-            >
+            <h3 className="mb-6 text-[10px] font-black uppercase tracking-widest opacity-70">
               Alignment_Tuning
             </h3>
 
-            <ControlSlider label="ROXY_SCALE" val={roxyScale} set={setRoxyScale} min={0.5} max={3.5} step={0.01} isDay={isDayMode} />
-            <ControlSlider label="Y_OFFSET" val={roxyY} set={setRoxyY} min={-200} max={600} isDay={isDayMode} />
-            <ControlSlider label="X_OFFSET" val={roxyX} set={setRoxyX} min={-400} max={400} isDay={isDayMode} />
-            <ControlSlider label="MAGIC_SIZE" val={magicScale} set={setMagicScale} min={0.2} max={1.5} step={0.01} isDay={isDayMode} />
-            <ControlSlider label="BRIGHTNESS" val={brightness} set={setBrightness} min={50} max={250} isDay={isDayMode} />
-            <ControlSlider label="SPIN_RATE" val={spinSpeed} set={setSpinSpeed} min={0.1} max={8} step={0.1} isDay={isDayMode} />
+            <ControlSlider
+              label="ROXY_SCALE"
+              val={roxyScale}
+              set={setRoxyScale}
+              min={0.5}
+              max={3.5}
+              step={0.01}
+              isDay={isDayMode}
+            />
+            <ControlSlider
+              label="Y_OFFSET"
+              val={roxyY}
+              set={setRoxyY}
+              min={-200}
+              max={600}
+              step={1}
+              isDay={isDayMode}
+            />
+            <ControlSlider
+              label="X_OFFSET"
+              val={roxyX}
+              set={setRoxyX}
+              min={-400}
+              max={400}
+              step={1}
+              isDay={isDayMode}
+            />
+            <ControlSlider
+              label="MAGIC_SIZE"
+              val={magicScale}
+              set={setMagicScale}
+              min={0.2}
+              max={1.5}
+              step={0.01}
+              isDay={isDayMode}
+            />
+            <ControlSlider
+              label="BRIGHTNESS"
+              val={brightness}
+              set={setBrightness}
+              min={50}
+              max={300}
+              step={1}
+              isDay={isDayMode}
+            />
+            <ControlSlider
+              label="SPIN_RATE"
+              val={spinSpeed}
+              set={setSpinSpeed}
+              min={0.1}
+              max={8}
+              step={0.1}
+              isDay={isDayMode}
+            />
 
-            <div className="mt-8 pt-4 border-t border-current/10 flex items-center justify-between text-[10px] font-bold">
+            <div className="mt-8 flex items-center justify-between border-t border-current/10 pt-4 text-[10px] font-bold">
               <button
-                onClick={() => {
-                  setRoxyScale(2.35);
-                  setRoxyX(119);
-                  setRoxyY(257);
-                  setMagicScale(0.6);
-                  setBrightness(196);
-                  setSpinSpeed(2.5);
-                }}
-                className="opacity-40 hover:opacity-100 transition-opacity"
+                onClick={resetTuning}
+                className="opacity-50 transition-opacity hover:opacity-100"
               >
                 RESET_CHANCELLOR
               </button>
 
               <button
                 onClick={() => setIsDayMode(!isDayMode)}
-                className={`w-10 h-5 rounded-full relative transition-colors ${
+                className={`relative h-5 w-10 rounded-full transition-colors ${
                   isDayMode ? 'bg-slate-300' : 'bg-purple-600'
                 }`}
               >
                 <div
-                  className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${
+                  className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${
                     isDayMode ? 'left-1' : 'left-6'
                   }`}
                 />
@@ -698,9 +958,9 @@ const AiriRoom = () => {
 
           <button
             onClick={() => setShowPanel(!showPanel)}
-            className={`w-6 h-32 self-center rounded-r-xl flex items-center justify-center shadow-lg ${
+            className={`flex h-32 w-6 items-center justify-center self-center rounded-r-xl text-white shadow-lg ${
               isDayMode ? 'bg-sky-500' : 'bg-purple-600'
-            } text-white`}
+            }`}
           >
             <span className="text-[10px] font-black" style={{ writingMode: 'vertical-lr' }}>
               {showPanel ? 'CLOSE' : 'VALVE'}
@@ -709,12 +969,11 @@ const AiriRoom = () => {
         </div>
       </div>
 
-      {/* 暗角/聚焦层 */}
       <div
-        className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-50 ${
+        className={`pointer-events-none fixed inset-0 z-50 transition-all duration-1000 ${
           isDayMode
-            ? 'bg-[radial-gradient(circle_at_center,transparent_40%,rgba(255,255,255,0.3)_100%)]'
-            : 'bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]'
+            ? 'bg-[radial-gradient(circle_at_center,transparent_42%,rgba(255,255,255,0.28)_100%)]'
+            : 'bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.88)_100%)]'
         }`}
       />
     </div>
@@ -723,10 +982,15 @@ const AiriRoom = () => {
 
 const ControlSlider = ({ label, val, set, min, max, step = 1, isDay }) => (
   <div className="mb-4 text-left">
-    <div className={`flex justify-between text-[9px] mb-1 font-mono font-bold ${isDay ? 'text-sky-900' : 'text-purple-100'}`}>
+    <div
+      className={`mb-1 flex justify-between font-mono text-[9px] font-bold ${
+        isDay ? 'text-sky-900' : 'text-purple-100'
+      }`}
+    >
       <span>{label}</span>
       <span>{val}</span>
     </div>
+
     <input
       type="range"
       min={min}
@@ -734,7 +998,7 @@ const ControlSlider = ({ label, val, set, min, max, step = 1, isDay }) => (
       step={step}
       value={val}
       onChange={(e) => set(parseFloat(e.target.value))}
-      className={`w-full h-1 appearance-none rounded-full cursor-pointer ${
+      className={`h-1 w-full cursor-pointer appearance-none rounded-full ${
         isDay ? 'bg-sky-200 accent-sky-500' : 'bg-slate-800 accent-purple-500'
       }`}
     />

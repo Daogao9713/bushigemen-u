@@ -16,6 +16,7 @@
     "framer-motion": "^12.34.3",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
+    "lottie-react": "^2.4.1",
     "pixi-live2d-display": "^0.4.0",
     "pixi.js": "7.4.3",
     "react": "^19.2.4",
@@ -48,5 +49,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "supabase": "^2.82.0"
   }
 }

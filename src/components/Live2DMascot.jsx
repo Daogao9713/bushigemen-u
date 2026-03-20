@@ -4,72 +4,56 @@ import React, {
   useState,
   forwardRef,
   useImperativeHandle,
+  useCallback,
 } from 'react';
 import * as PIXI from 'pixi.js';
 
 const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+
   const appRef = useRef(null);
   const modelRef = useRef(null);
   const physicsPulseRef = useRef(null);
+  const destroyedRef = useRef(false);
+
+  // Lip Sync refs
+  const lipSyncRafRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const mediaSourceRef = useRef(null);
+  const lipCleanupRef = useRef(null);
 
   const [status, setStatus] = useState('loading');
   const [errorText, setErrorText] = useState('');
 
-  useImperativeHandle(ref, () => ({
-    playMotion: async (motionName) => {
-      try {
-        if (!modelRef.current || !motionName) return;
-        await modelRef.current.motion(motionName);
-      } catch (err) {
-        console.warn('[BGU] motion 播放失败:', motionName, err);
-      }
-    },
+  // -----------------------------
+  // 基础工具
+  // -----------------------------
+  const normalizeHitAreas = useCallback((hitAreaNames = []) => {
+    return hitAreaNames.map((name) => String(name).toLowerCase());
+  }, []);
 
-    setExpression: async (expressionName) => {
-      try {
-        if (!modelRef.current || !expressionName) return;
-        await modelRef.current.expression(expressionName);
-      } catch (err) {
-        console.warn('[BGU] expression 切换失败:', expressionName, err);
-      }
-    },
-  }));
+  const dispatchUserTouched = useCallback((text = '轻轻碰了碰你') => {
+    window.dispatchEvent(
+      new CustomEvent('roxy_interaction', {
+        detail: text,
+      })
+    );
 
-  useEffect(() => {
-    let destroyed = false;
+    window.dispatchEvent(
+      new CustomEvent('roxy_user_touched', {
+        detail: {
+          source: 'live2d',
+          text,
+          at: Date.now(),
+        },
+      })
+    );
+  }, []);
 
-    let resizeHandler = null;
-    let pointerMoveHandler = null;
-    let pointerDownHandler = null;
-    let pointerLeaveHandler = null;
-    let randomIdleHandler = null;
-    let hitHandler = null;
-
-    const normalizeHitAreas = (hitAreaNames = []) => {
-      return hitAreaNames.map((name) => String(name).toLowerCase());
-    };
-
-    const dispatchUserTouched = (text = '轻轻碰了碰你') => {
-      window.dispatchEvent(
-        new CustomEvent('roxy_interaction', {
-          detail: text,
-        })
-      );
-
-      window.dispatchEvent(
-        new CustomEvent('roxy_user_touched', {
-          detail: {
-            source: 'live2d',
-            text,
-            at: Date.now(),
-          },
-        })
-      );
-    };
-
-    const dispatchInteractionByHit = (hitAreaNames = []) => {
+  const dispatchInteractionByHit = useCallback(
+    (hitAreaNames = []) => {
       const names = normalizeHitAreas(hitAreaNames);
 
       if (
@@ -86,13 +70,7 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
         return 'head';
       }
 
-      if (
-        names.some(
-          (n) =>
-            n.includes('ear') ||
-            n.includes('ears')
-        )
-      ) {
+      if (names.some((n) => n.includes('ear') || n.includes('ears'))) {
         dispatchUserTouched('捏了捏你的耳朵');
         return 'ear';
       }
@@ -118,45 +96,49 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
 
       dispatchUserTouched('轻轻碰了碰你');
       return 'generic';
-    };
+    },
+    [dispatchUserTouched, normalizeHitAreas]
+  );
 
-    const getCoreModel = () => {
-      return modelRef.current?.internalModel?.coreModel || null;
-    };
+  const getCoreModel = useCallback(() => {
+    return modelRef.current?.internalModel?.coreModel || null;
+  }, []);
 
-    const setCoreParam = (paramId, value, weight = 1) => {
-      const coreModel = getCoreModel();
-      if (!coreModel || !paramId) return false;
+  const setCoreParam = useCallback((paramId, value, weight = 1) => {
+    const coreModel = getCoreModel();
+    if (!coreModel || !paramId) return false;
 
-      try {
-        if (typeof coreModel.addParameterValueById === 'function') {
-          coreModel.addParameterValueById(paramId, value, weight);
-          return true;
-        }
-
-        if (typeof coreModel.setParameterValueById === 'function') {
-          coreModel.setParameterValueById(paramId, value, weight);
-          return true;
-        }
-      } catch (err) {
-        console.warn('[BGU] 参数注入失败:', paramId, err);
+    try {
+      if (typeof coreModel.addParameterValueById === 'function') {
+        coreModel.addParameterValueById(paramId, value, weight);
+        return true;
       }
 
-      return false;
-    };
-
-    const clearPhysicsPulse = () => {
-      if (physicsPulseRef.current) {
-        cancelAnimationFrame(physicsPulseRef.current);
-        physicsPulseRef.current = null;
+      if (typeof coreModel.setParameterValueById === 'function') {
+        coreModel.setParameterValueById(paramId, value, weight);
+        return true;
       }
-    };
+    } catch (err) {
+      console.warn('[BGU] 参数注入失败:', paramId, err);
+    }
 
-    const startPhysicsPulse = (type = 'generic') => {
+    return false;
+  }, [getCoreModel]);
+
+  // -----------------------------
+  // 物理反馈
+  // -----------------------------
+  const clearPhysicsPulse = useCallback(() => {
+    if (physicsPulseRef.current) {
+      cancelAnimationFrame(physicsPulseRef.current);
+      physicsPulseRef.current = null;
+    }
+  }, []);
+
+  const startPhysicsPulse = useCallback(
+    (type = 'generic') => {
       clearPhysicsPulse();
 
-      // 这些是“候选参数”，不一定都存在
-      // 你后续应该根据 physics3.json / cdi3.json 精确替换
       const paramCandidatesByType = {
         head: [
           'ParamPad1',
@@ -194,7 +176,7 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
       const totalFrames = 40;
 
       const tick = () => {
-        if (destroyed || !modelRef.current) return;
+        if (destroyedRef.current || !modelRef.current) return;
 
         const t = frame / totalFrames;
         const pulse = Math.sin((1 - t) * Math.PI) * (1 - t) * 20;
@@ -209,7 +191,6 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
           physicsPulseRef.current = requestAnimationFrame(tick);
         } else {
           physicsPulseRef.current = null;
-          // 结束时尝试归零，避免某些模型停在高值
           for (const id of candidates) {
             setCoreParam(id, 0, 1);
           }
@@ -217,6 +198,253 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
       };
 
       physicsPulseRef.current = requestAnimationFrame(tick);
+    },
+    [clearPhysicsPulse, setCoreParam]
+  );
+
+  // -----------------------------
+  // 唇形同步
+  // -----------------------------
+  const stopLipSync = useCallback(() => {
+    if (lipSyncRafRef.current) {
+      cancelAnimationFrame(lipSyncRafRef.current);
+      lipSyncRafRef.current = null;
+    }
+
+    if (lipCleanupRef.current) {
+      try {
+        lipCleanupRef.current();
+      } catch (err) {
+        console.warn('[BGU] lip cleanup 释放失败', err);
+      }
+      lipCleanupRef.current = null;
+    }
+
+    try {
+      if (mediaSourceRef.current) {
+        mediaSourceRef.current.disconnect();
+      }
+    } catch (_) {}
+
+    try {
+      if (analyserRef.current) {
+        analyserRef.current.disconnect();
+      }
+    } catch (_) {}
+
+    mediaSourceRef.current = null;
+    analyserRef.current = null;
+
+    if (audioContextRef.current) {
+      const ctx = audioContextRef.current;
+      audioContextRef.current = null;
+
+      try {
+        if (ctx.state !== 'closed') {
+          ctx.close();
+        }
+      } catch (_) {}
+    }
+
+    setCoreParam('ParamMouthOpenY', 0, 1);
+  }, [setCoreParam]);
+
+  const syncLipWithAudio = useCallback(
+    async (audioElement) => {
+      if (!audioElement) return false;
+      if (typeof window === 'undefined') return false;
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        console.warn('[BGU] 当前环境不支持 AudioContext，无法启用高级唇形同步');
+        return false;
+      }
+
+      stopLipSync();
+
+      try {
+        const audioContext = new AudioContextClass();
+        audioContextRef.current = audioContext;
+
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 32;
+        analyser.smoothingTimeConstant = 0.7;
+        analyserRef.current = analyser;
+
+        const source = audioContext.createMediaElementSource(audioElement);
+        mediaSourceRef.current = source;
+
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const cleanup = () => {
+          audioElement.removeEventListener('ended', onEnded);
+          audioElement.removeEventListener('pause', onPause);
+          audioElement.removeEventListener('emptied', onEnded);
+        };
+
+        const onEnded = () => {
+          stopLipSync();
+        };
+
+        const onPause = () => {
+          if (audioElement.ended) {
+            stopLipSync();
+          } else {
+            setCoreParam('ParamMouthOpenY', 0, 1);
+          }
+        };
+
+        lipCleanupRef.current = cleanup;
+
+        audioElement.addEventListener('ended', onEnded);
+        audioElement.addEventListener('pause', onPause);
+        audioElement.addEventListener('emptied', onEnded);
+
+        const update = () => {
+          if (
+            destroyedRef.current ||
+            !audioElement ||
+            audioElement.paused ||
+            audioElement.ended
+          ) {
+            setCoreParam('ParamMouthOpenY', 0, 1);
+            lipSyncRafRef.current = null;
+            return;
+          }
+
+          analyser.getByteFrequencyData(dataArray);
+
+          // 取低频前几项平均值，做成更平滑的嘴巴张合度
+          const sampleCount = Math.max(1, Math.min(4, dataArray.length));
+          let sum = 0;
+          for (let i = 0; i < sampleCount; i += 1) {
+            sum += dataArray[i];
+          }
+
+          const avg = sum / sampleCount;
+          const volume = avg / 255;
+          const mouthValue = Math.min(1, volume * 1.5);
+
+          setCoreParam('ParamMouthOpenY', mouthValue, 1);
+
+          lipSyncRafRef.current = requestAnimationFrame(update);
+        };
+
+        lipSyncRafRef.current = requestAnimationFrame(update);
+        return true;
+      } catch (err) {
+        console.error('[BGU] 高级唇形同步启动失败:', err);
+        stopLipSync();
+        return false;
+      }
+    },
+    [setCoreParam, stopLipSync]
+  );
+
+  // -----------------------------
+  // 对外接口
+  // -----------------------------
+  useImperativeHandle(
+    ref,
+    () => ({
+      playMotion: async (motionName) => {
+        try {
+          if (!modelRef.current || !motionName) return;
+          await modelRef.current.motion(motionName);
+        } catch (err) {
+          console.warn('[BGU] motion 播放失败:', motionName, err);
+        }
+      },
+
+      setExpression: async (expressionName) => {
+        try {
+          if (!modelRef.current || !expressionName) return;
+          await modelRef.current.expression(expressionName);
+        } catch (err) {
+          console.warn('[BGU] expression 切换失败:', expressionName, err);
+        }
+      },
+
+      setCoreParam,
+
+      syncLipWithAudio,
+
+      stopLipSync,
+    }),
+    [setCoreParam, syncLipWithAudio, stopLipSync]
+  );
+
+  // -----------------------------
+  // 主引擎启动
+  // -----------------------------
+  useEffect(() => {
+    let destroyed = false;
+    destroyedRef.current = false;
+
+    let resizeHandler = null;
+    let pointerMoveHandler = null;
+    let pointerDownHandler = null;
+    let pointerLeaveHandler = null;
+    let randomIdleHandler = null;
+    let hitHandler = null;
+
+    const toCanvasPoint = (clientX, clientY) => {
+      const canvas = canvasRef.current;
+      const app = appRef.current;
+
+      if (!canvas || !app) {
+        return { x: 0, y: 0 };
+      }
+
+      const rect = canvas.getBoundingClientRect();
+
+      if (!rect.width || !rect.height) {
+        return {
+          x: app.screen.width / 2,
+          y: app.screen.height / 2,
+        };
+      }
+
+      return {
+        x: ((clientX - rect.left) / rect.width) * app.screen.width,
+        y: ((clientY - rect.top) / rect.height) * app.screen.height,
+      };
+    };
+
+    const safeHitTest = (x, y) => {
+      const model = modelRef.current;
+      if (!model) return [];
+
+      try {
+        if (typeof model.hitTest === 'function') {
+          const result = model.hitTest(x, y);
+          if (Array.isArray(result)) return result;
+          if (typeof result === 'string') return [result];
+          if (result) return ['unknown'];
+        }
+      } catch (err) {
+        console.warn('[BGU] model.hitTest 失败', err);
+      }
+
+      try {
+        if (typeof model.internalModel?.hitTest === 'function') {
+          const result = model.internalModel.hitTest(x, y);
+          if (Array.isArray(result)) return result;
+          if (typeof result === 'string') return [result];
+          if (result) return ['unknown'];
+        }
+      } catch (err) {
+        console.warn('[BGU] internalModel.hitTest 失败', err);
+      }
+
+      return [];
     };
 
     const boot = async () => {
@@ -227,11 +455,12 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
         setErrorText('');
 
         window.PIXI = PIXI;
-        // 强制开启高质量纹理缩放算法
-        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR; 
 
-// 增加各向异性过滤等级（如果硬件支持，会让侧面和细节更锐利）
-        PIXI.settings.ANISOTROPIC_LEVEL = 16;
+        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
+        if ('ANISOTROPIC_LEVEL' in PIXI.settings) {
+          PIXI.settings.ANISOTROPIC_LEVEL = 16;
+        }
+
         const live2dModule = await import('pixi-live2d-display/cubism4');
         const Live2DModel = live2dModule.Live2DModel;
 
@@ -255,7 +484,6 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
 
         appRef.current = app;
 
-        // 继续彻底关闭 Pixi 事件系统
         if (app.stage) {
           app.stage.interactive = false;
           app.stage.interactiveChildren = false;
@@ -305,58 +533,6 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
 
           m.scale.set(finalScale);
           m.position.set(a.screen.width / 2, a.screen.height / 2);
-        };
-
-        const toCanvasPoint = (clientX, clientY) => {
-          const canvas = canvasRef.current;
-          const app = appRef.current;
-
-          if (!canvas || !app) {
-            return { x: 0, y: 0 };
-          }
-
-          const rect = canvas.getBoundingClientRect();
-
-          if (!rect.width || !rect.height) {
-            return {
-              x: app.screen.width / 2,
-              y: app.screen.height / 2,
-            };
-          }
-
-          return {
-            x: ((clientX - rect.left) / rect.width) * app.screen.width,
-            y: ((clientY - rect.top) / rect.height) * app.screen.height,
-          };
-        };
-
-        const safeHitTest = (x, y) => {
-          const model = modelRef.current;
-          if (!model) return [];
-
-          try {
-            if (typeof model.hitTest === 'function') {
-              const result = model.hitTest(x, y);
-              if (Array.isArray(result)) return result;
-              if (typeof result === 'string') return [result];
-              if (result) return ['unknown'];
-            }
-          } catch (err) {
-            console.warn('[BGU] model.hitTest 失败', err);
-          }
-
-          try {
-            if (typeof model.internalModel?.hitTest === 'function') {
-              const result = model.internalModel.hitTest(x, y);
-              if (Array.isArray(result)) return result;
-              if (typeof result === 'string') return [result];
-              if (result) return ['unknown'];
-            }
-          } catch (err) {
-            console.warn('[BGU] internalModel.hitTest 失败', err);
-          }
-
-          return [];
         };
 
         hitHandler = (hitAreaNames) => {
@@ -413,10 +589,8 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
 
           const interactionType = dispatchInteractionByHit(hitAreas);
 
-          // 🚀 点击物理激振
           startPhysicsPulse(interactionType);
 
-          // 可选视觉反馈
           try {
             if (typeof modelRef.current.expression === 'function') {
               if (interactionType === 'head' || interactionType === 'ear') {
@@ -454,7 +628,6 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
         };
 
         fitModel();
-
         resizeHandler = () => fitModel();
 
         window.addEventListener('resize', resizeHandler);
@@ -478,8 +651,10 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
 
     return () => {
       destroyed = true;
+      destroyedRef.current = true;
 
       clearPhysicsPulse();
+      stopLipSync();
 
       if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler);
@@ -524,17 +699,23 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
       modelRef.current = null;
       appRef.current = null;
     };
-  }, [modelUrl]);
+  }, [
+    modelUrl,
+    clearPhysicsPulse,
+    dispatchInteractionByHit,
+    startPhysicsPulse,
+    stopLipSync,
+  ]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative pointer-events-auto"
+      className="relative h-full w-full pointer-events-auto"
       style={{ minHeight: '500px' }}
     >
       <canvas
         ref={canvasRef}
-        className={`w-full h-full transition-opacity duration-1000 ${
+        className={`h-full w-full transition-opacity duration-1000 ${
           status === 'ready' ? 'opacity-100' : 'opacity-0'
         }`}
         style={{
@@ -544,17 +725,17 @@ const Live2DMascot = forwardRef(({ modelUrl }, ref) => {
       />
 
       {status === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center text-cyan-400 text-xs font-mono tracking-[0.3em] animate-pulse pointer-events-none">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-mono tracking-[0.3em] text-cyan-400 animate-pulse">
           INIT_HD_LINKING...
         </div>
       )}
 
       {status === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-red-400 font-mono px-6 pointer-events-none">
-          <div className="text-sm font-black mb-2 border-b border-red-400/30 pb-1">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 font-mono text-red-400">
+          <div className="mb-2 border-b border-red-400/30 pb-1 text-sm font-black">
             BGU_LINK_ERROR
           </div>
-          <div className="text-[10px] opacity-60 break-all">{errorText}</div>
+          <div className="break-all text-[10px] opacity-60">{errorText}</div>
         </div>
       )}
     </div>
