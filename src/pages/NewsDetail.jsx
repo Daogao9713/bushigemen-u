@@ -107,7 +107,7 @@ function NewsDetail() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="opacity-40">WRITTEN_BY:</span>
-                <span className="text-white font-bold tracking-normal">{article.author || 'Chancellor'}</span>
+                <span className="text-white font-bold tracking-normal">{article.author || 'ROXY'}</span>
               </div>
             </div>
           </div>

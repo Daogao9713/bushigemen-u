@@ -5,7 +5,7 @@ import Live2DMascot from '../components/Live2DMascot';
 import MoodHUD from '../components/MoodHUD';
 
 import { useSoulStore } from '../store/useSoulStore';
-import { sendToLLM } from '../lib/llm';
+import { sendToLLM } from '../agent/llm';
 import { exportMemory, parseMemoryFile } from '../lib/memory';
 import { speak } from '../lib/tts';
 
@@ -321,8 +321,31 @@ const cleanup = async () => {
   }, [stopCurrentSpeech]);
 
   // -----------------------------
-  // 9) 核心对话处理
+  // 9) 前端工具处理
+  // 拦截并处理 LLM 返回的前端工具调用
+  // 例如：open_nav_link（打开链接）
+  // 这些工具必须在浏览器中执行，而不能在后端执行
   // -----------------------------
+  const handleAgentAction = useCallback((action) => {
+    if (!action) return null;
+
+    if (action.type === 'navigation') {
+      const url = action.url;
+      const target = action.target || '未知';
+      
+      if (url) {
+        window.open(url, '_blank');
+        console.log(`[BGU_ACTION] 导航至 ${target}: ${url}`);
+        return `[系统]: 已为校长跳转至 ${target}`;
+      }
+    }
+    
+    return null;
+  }, []);
+
+  // -----------------------------
+  // 10) 核心对话处理
+  // 核心逻辑：接收用户输入，发送到 LLM，处理回复和工具调用
   const processChat = useCallback(
     async (userInput, isInteraction = false) => {
       const cleanText = String(userInput || '').trim();
@@ -333,7 +356,7 @@ const cleanup = async () => {
       lastInteractionTime.current = Date.now();
 
       if (!isInteraction) {
-        setSpeaker('CHANCELLOR');
+        setSpeaker('ROXY');
         setMessage(cleanText);
       } else {
         console.log('触发物理互动:', cleanText);
@@ -373,6 +396,14 @@ const cleanup = async () => {
           if (res?.expression) mascotRef.current.setExpression?.(res.expression);
         }
 
+        // 🔧 处理前端工具调用
+        if (res?.action) {
+          const actionResult = handleAgentAction(res.action);
+          if (actionResult) {
+            console.log('[BGU_ACTION]', actionResult);
+          }
+        }
+
         // 🎤 AI 回复后播放语音并进行简易唇形同步
         void playRoxyVoice(replyText);
 
@@ -394,6 +425,7 @@ const cleanup = async () => {
       addMessage,
       changeMood,
       playRoxyVoice,
+      handleAgentAction,
     ]
   );
 
@@ -664,7 +696,7 @@ const cleanup = async () => {
                       <div className="mb-2 flex items-baseline gap-3 opacity-60">
                         <span className="font-mono text-[10px] text-sky-400">
                           {msg.role === 'user'
-                            ? loggedInUserName || 'CHANCELLOR'
+                            ? loggedInUserName || 'ROXY'
                             : 'ROXY'}
                         </span>
                         <span className="font-mono text-[9px] text-slate-500">
@@ -944,7 +976,7 @@ const cleanup = async () => {
                 onClick={resetTuning}
                 className="opacity-50 transition-opacity hover:opacity-100"
               >
-                RESET_CHANCELLOR
+                RESET_ROXY
               </button>
 
               <button

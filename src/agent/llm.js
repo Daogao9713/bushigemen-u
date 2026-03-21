@@ -1,6 +1,6 @@
-import { sanitizeMotion, sanitizeExpression } from './live2dCommands';
-import { getMoodStage } from './mood';
-import { supabase } from './supabase'; 
+import { sanitizeMotion, sanitizeExpression } from '../lib/live2dCommands';
+import { getMoodStage } from '../lib/mood';
+import { supabase } from '../lib/supabase'; 
 
 /**
  * 发送信息至边缘函数，由后端安全呼叫 LLM
@@ -60,7 +60,8 @@ export async function sendToLLM({
       reply: content?.reply || "……（Roxy 正在调频中）",
       mood_change: content?.mood_change ?? 0,
       motion: sanitizeMotion(content?.motion),
-      expression: sanitizeExpression(content?.expression)
+      expression: sanitizeExpression(content?.expression),
+      action: content?.action || null
     };
 
   } catch (err) {
@@ -69,7 +70,8 @@ export async function sendToLLM({
       reply: "……（信号同步中断，请检查校长端的网络链路）",
       mood_change: 0,
       motion: "Idle",
-      expression: "Init_Clean"
+      expression: "Init_Clean",
+      action: null
     };
   }
 }
